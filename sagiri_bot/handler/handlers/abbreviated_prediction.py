@@ -41,7 +41,7 @@ class AbbreviatedPrediction(AbstractHandler):
     @switch()
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
-                     member: Member = None,friend: Friend = None):
+                     member: Member = None, friend: Friend = None):
         message_text = message.asDisplay()
         if re.match(r'缩\s?[A-Za-z0-9]+', message_text):
             if member and group:

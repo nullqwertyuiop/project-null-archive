@@ -4,69 +4,82 @@ import base64
 import aiohttp
 import hashlib
 import traceback
+
+from graia.ariadne.model import Friend
 from loguru import logger
 from sqlalchemy import select
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
-from graia.broadcast.interrupt.waiter import Waiter
 from graia.ariadne.exception import AccountMuted
-from graia.broadcast.interrupt import InterruptControl
+from graia.broadcast.interrupt.waiter import Waiter
 from graia.ariadne.message.chain import MessageChain
-from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.broadcast.interrupt import InterruptControl
 from graia.ariadne.message.element import Plain, Image
+from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
 
 
-from SAGIRIBOT.ORM.AsyncORM import orm
-from SAGIRIBOT.Core.AppCore import AppCore
-from SAGIRIBOT.ORM.AsyncORM import KeywordReply
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import user_permission_require
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, Normal, QuoteSource
+from sagiri_bot.orm.async_orm import orm
+from sagiri_bot.core.app_core import AppCore
+from sagiri_bot.orm.async_orm import KeywordReply
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import user_permission_require
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import Normal, QuoteSource
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("KeywordRespondent")
+channel.author("SAGIRI-kawaii")
+channel.description(
+    "一个关键字回复插件，在群中发送已添加关键词可自动回复\n"
+    "在群中发送 `添加回复关键词#{keyword}#{reply} 可添加关键词`\n"
+    "在群中发送 `删除回复关键词#{keyword} 可删除关键词`"
+)
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def keyword_reply_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await KeywordReplyHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+async def keyword_respondent(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await KeywordRespondent.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class KeywordReplyHandler(AbstractHandler):
-    __name__ = "KeywordReplyHandler"
-    __description__ = "一个关键字回复Handler"
-    __usage__ = ""
+class KeywordRespondent(AbstractHandler):
+    __name__ = "KeywordRespondent"
+    __description__ = "一个关键字回复插件"
+    __usage__ = "在群中发送已添加关键词可自动回复\n" \
+                "在群中发送 `添加回复关键词#{keyword}#{reply} 可添加关键词`\n" \
+                "在群中发送 `删除回复关键词#{keyword} 可删除关键词`"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         message_serialization = message.asPersistentString()
         if re.match(r"添加回复关键词#[\s\S]*#[\s\S]*", message_serialization):
             if await user_permission_require(group, member, 2):
-                return await KeywordReplyHandler.update_keyword(message, message_serialization)
+                return await KeywordRespondent.update_keyword(message, message_serialization)
             else:
                 return MessageItem(MessageChain.create([Plain(text="权限不足，爬")]), QuoteSource())
         elif re.match(r"删除回复关键词#[\s\S]*", message_serialization):
             if await user_permission_require(group, member, 2):
-                return await KeywordReplyHandler.delete_keyword(app, message_serialization, group, member)
+                return await KeywordRespondent.delete_keyword(app, message_serialization, group, member)
             else:
                 return MessageItem(MessageChain.create([Plain(text="权限不足，爬")]), QuoteSource())
-        elif result := await KeywordReplyHandler.keyword_detect(message_serialization):
+        elif result := await KeywordRespondent.keyword_detect(message_serialization):
             return result
         else:
             return None
 
     @staticmethod
     async def keyword_detect(keyword: str):
-        if re.match(r"\[mirai:image:{.*}\..*]", keyword):
-            keyword = re.findall(r"\[mirai:image:{(.*?)}\..*]", keyword, re.S)[0]
+        if re.match(r"\[mirai:Image:{\"imageId\": \"{.*}\..*]", keyword):
+            keyword = re.findall(r"\[mirai:Image:{\"imageId\": \"{(.*)}\..*]", keyword, re.S)[0]
         if result := list(await orm.fetchall(
                 select(
                     KeywordReply.reply, KeywordReply.reply_type
@@ -87,14 +100,14 @@ class KeywordReplyHandler(AbstractHandler):
     @staticmethod
     async def update_keyword(message: MessageChain, message_serialization: str) -> MessageItem:
         _, keyword, reply = message_serialization.split("#")
+        keyword = keyword.strip()
         keyword_type = "text"
         reply_type = "text"
-
-        if re.match(r"\[mirai:image:{.*}\..*]", keyword):
-            keyword = re.findall(r"\[mirai:image:{(.*?)}\..*]", keyword, re.S)[0]
+        if re.match(r"\[mirai:Image:{\"imageId\": \"{.*}\..*]", keyword):
+            keyword = re.findall(r"\[mirai:Image:{\"imageId\": \"{(.*)}\..*]", keyword, re.S)[0]
             keyword_type = "img"
 
-        if re.match(r"\[mirai:image:{.*}\..*]", reply):
+        if re.match(r"\[mirai:Image:{\"imageId\": \"{.*}\..*]", reply):
             reply_type = "img"
             image: Image = message[Image][0] if keyword_type == "text" else message[Image][1]
             async with aiohttp.ClientSession() as session:
@@ -118,7 +131,7 @@ class KeywordReplyHandler(AbstractHandler):
                     {"keyword": keyword, "reply": reply, "reply_type": reply_type, "reply_md5": reply_md5}
                 )
                 return MessageItem(MessageChain.create([Plain(text=f"关键词添加成功！")]), Normal())
-        except Exception:
+        except:
             logger.error(traceback.format_exc())
             return MessageItem(MessageChain.create([Plain(text="发生错误！请查看日志！")]), Normal())
 
@@ -135,8 +148,8 @@ class KeywordReplyHandler(AbstractHandler):
                 QuoteSource()
             )
         keyword = keyword.strip()
-        if re.match(r"\[mirai:image:{.*}\..*]", keyword):
-            keyword = re.findall(r"\[mirai:image:{(.*?)}\..*]", keyword, re.S)[0]
+        if re.match(r"\[mirai:Image:{\"imageId\": \"{.*}\..*]", keyword):
+            keyword = re.findall(r"\[mirai:Image:{\"imageId\": \"{(.*)}\..*]", keyword, re.S)[0]
 
         if results := await orm.fetchall(
             select(

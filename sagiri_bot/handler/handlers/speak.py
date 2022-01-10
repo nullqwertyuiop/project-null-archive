@@ -6,66 +6,74 @@ import traceback
 from typing import Union
 
 import aiohttp
-from graia.ariadne.model import UploadMethod
+from graia.ariadne.model import Friend
 from loguru import logger
 from graiax import silkcoder
 from sqlalchemy import select
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
 from graia.ariadne.event.message import Group, Member, GroupMessage
 
-from SAGIRIBOT.ORM.AsyncORM import orm
-from SAGIRIBOT.ORM.AsyncORM import Setting, UserCalledCount
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import get_config
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.utils import update_user_call_count_plus1
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, Normal, QuoteSource
+from sagiri_bot.orm.async_orm import orm
+from sagiri_bot.core.app_core import AppCore
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.utils import update_user_call_count_plus, get_config
+from sagiri_bot.orm.async_orm import Setting, UserCalledCount
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.strategy import Normal, QuoteSource
+from sagiri_bot.message_sender.message_sender import MessageSender
 
 from tencentcloud.common import credential
-from tencentcloud.common.profile.client_profile import ClientProfile
-from tencentcloud.common.profile.http_profile import HttpProfile
-from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 from tencentcloud.tts.v20190823 import tts_client, models
+from tencentcloud.common.profile.http_profile import HttpProfile
+from tencentcloud.common.profile.client_profile import ClientProfile
+from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("Speak")
+channel.author("nullqwertyuiop, SAGIRI-kawaii")
+channel.description("语音合成插件，在群中发送 `说 {content}` 即可")
+
+core = AppCore.get_core_instance()
+config = core.get_config()
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def speak_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await SpeakHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await Speak.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class SpeakHandler(AbstractHandler):
-    __name__ = "SpeakHandler"
-    __description__ = "语音合成"
-    __usage__ = "None"
+class Speak(AbstractHandler):
+    __name__ = "Speak"
+    __description__ = "语音合成插件"
+    __usage__ = "在群中发送 `说 {content}` 即可"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay().startswith("说 "):
             text = ''.join([plain.text for plain in message.get(Plain)])[2:].replace(" ", '，')
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            voice = await SpeakHandler.get_voice(app, group.id, text)
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            voice = await Speak.get_voice(app, group.id, text)
             if isinstance(voice, str):
                 return MessageItem(MessageChain.create([Plain(text=voice)]), QuoteSource())
             elif isinstance(voice, bytes):
-                voice_element = await app.uploadVoice(await silkcoder.encode(voice), method=UploadMethod.Group)
+                voice_element = await app.uploadVoice(await silkcoder.encode(voice))
                 return MessageItem(MessageChain.create([voice_element]), Normal())
         elif message.asDisplay().startswith("长语音查询 "):
             _, task_id = message.asDisplay().split(" ", maxsplit=1)
-            if query := await SpeakHandler.get_long_voice_status(task_id):
+            if query := await Speak.get_long_voice_status(task_id):
                 if query["Data"]["Status"] == 0:
                     msg = "语音正在等待合成，请稍候。"
                 elif query["Data"]["Status"] == 1:
@@ -90,8 +98,8 @@ class SpeakHandler(AbstractHandler):
             voice_type = voice_type[0]
             if voice_type != "off":
                 try:
-                    user_data = get_config("tencent")
-                    cred = credential.Credential(user_data["secretId"], user_data["secretKey"])
+                    user_data = config.functions["tencent"]
+                    cred = credential.Credential(user_data["secret_id"], user_data["secret_key"])
                     session_ID = str(uuid.uuid4())
                     httpProfile = HttpProfile()
                     httpProfile.endpoint = "tts.tencentcloudapi.com"
@@ -131,7 +139,7 @@ class SpeakHandler(AbstractHandler):
                     elif error_code == "UnsupportedOperation.ServerNotOpen":
                         return "远端服务器未开通使用，请稍后再试。"
                     elif error_code == "UnsupportedOperation.TextTooLong":
-                        return await SpeakHandler.get_long_voice(app, voice_type, text, group_id)
+                        return await Speak.get_long_voice(app, voice_type, text, group_id)
                     return str(err)
             else:
                 return None
@@ -161,7 +169,7 @@ class SpeakHandler(AbstractHandler):
                 Plain(text=f'已发送长语音合成请求，合成完毕后将自动发送，可发送 "长语音查询 任务ID" 查询合成状态。\n任务 ID：{task_id}')
             ]))
             while True:
-                status = await SpeakHandler.get_long_voice_status(task_id)
+                status = await Speak.get_long_voice_status(task_id)
                 if status["Data"]["Status"] in (0, 1):
                     await asyncio.sleep(1)
                 elif status["Data"]["Status"] == 3:

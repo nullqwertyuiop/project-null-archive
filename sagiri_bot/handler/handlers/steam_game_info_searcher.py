@@ -1,43 +1,61 @@
 import re
 import aiohttp
+from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.chain import MessageChain
-from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.message.element import Plain, Image
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.decorators import frequency_limit_require_weight_free
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.utils import update_user_call_count_plus1, UserCalledCount
+from sagiri_bot.core.app_core import AppCore
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.decorators import frequency_limit_require_weight_free
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("SteamGameInfoSearch")
+channel.author("SAGIRI-kawaii")
+channel.description("一个可以搜索steam游戏信息的Handler，在群中发送 `steam {游戏名}` 即可")
+
+core = AppCore.get_core_instance()
+config = core.get_config()
+proxy = config.proxy if config.proxy != "proxy" else ''
+
+
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+async def steam_game_info_searcher(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await SteamGameInfoSearch.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def steam_game_info_search_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await SteamGameInfoSearchHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+async def steam_game_info_searcher(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await SteamGameInfoSearch.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class SteamGameInfoSearchHandler(AbstractHandler):
-    __name__ = "SteamGameInfoSearchHandler"
+class SteamGameInfoSearch(AbstractHandler):
+    __name__ = "SteamGameInfoSearch"
     __description__ = "一个可以搜索steam游戏信息的Handler"
-    __usage__ = "在群中发送 `steam 游戏名` 即可"
+    __usage__ = "在群中发送 `steam {游戏名}` 即可"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay().startswith("steam "):
-            await update_user_call_count_plus1(group, member, UserCalledCount.search, "search")
-            return await SteamGameInfoSearchHandler.get_steam_game_search(group, member, message.asDisplay()[6:])
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.search, "search")
+            return await SteamGameInfoSearch.get_steam_game_search(group, member, message.asDisplay()[6:])
         else:
             return None
 
@@ -57,7 +75,7 @@ class SteamGameInfoSearchHandler(AbstractHandler):
         """
         url = "https://store.steampowered.com/app/%s/" % game_id
         async with aiohttp.ClientSession() as session:
-            async with session.get(url=url) as resp:
+            async with session.get(url=url, proxy=proxy) as resp:
                 html = await resp.text()
         description = re.findall(r'<div class="game_description_snippet">(.*?)</div>', html, re.S)
         if len(description) == 0:
@@ -77,7 +95,8 @@ class SteamGameInfoSearchHandler(AbstractHandler):
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
-            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36"
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/85.0.4183.121 Safari/537.36 "
         }
 
         async with aiohttp.ClientSession() as session:
@@ -86,7 +105,7 @@ class SteamGameInfoSearchHandler(AbstractHandler):
 
         if len(result["data"]["results"]) == 0:
             return MessageItem(
-                MessageChain.create([Plain(text=f"搜索不到{keyword}呢~检查下有没有吧~偷偷告诉你，搜英文名的效果可能会更好哟~")]),
+                MessageChain.create([Plain(text=f"搜索不到{keyword}，搜索英文名可能可以搜索到相应内容。")]),
                 QuoteSource()
             )
         else:
@@ -94,7 +113,7 @@ class SteamGameInfoSearchHandler(AbstractHandler):
             async with aiohttp.ClientSession() as session:
                 async with session.get(url=result["avatar"]) as resp:
                     img_content = await resp.read()
-            description = await SteamGameInfoSearchHandler.get_steam_game_description(result["app_id"])
+            description = await SteamGameInfoSearch.get_steam_game_description(result["app_id"])
             return MessageItem(
                 MessageChain.create([
                     Plain(text="\n搜索到以下信息：\n"),

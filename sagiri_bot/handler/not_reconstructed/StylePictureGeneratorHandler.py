@@ -2,24 +2,25 @@ import re
 import os
 import numpy as np
 from io import BytesIO
-from math import radians, tan, cos, sin
+from math import radians, tan
 from decimal import Decimal, ROUND_HALF_UP
 from PIL import Image as IMG, ImageDraw, ImageFont
+from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.chain import MessageChain
-from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.message.element import Plain, Image
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.decorators import frequency_limit_require_weight_free
-from SAGIRIBOT.utils import update_user_call_count_plus1, UserCalledCount
-from SAGIRIBOT.MessageSender.Strategy import Normal, GroupStrategy, QuoteSource
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.strategy import Normal, QuoteSource
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.decorators import frequency_limit_require_weight_free
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
 
 
 _round = lambda f, r=ROUND_HALF_UP: int(Decimal(str(f)).quantize(Decimal("0"), rounding=r))
@@ -38,35 +39,49 @@ FONT_SIZE = 50
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("StylePictureGenerator")
+channel.author("SAGIRI-kawaii")
+channel.description("一个可以生成不同风格图片的插件，在群中发送 `[5000兆|ph|yt] 文字1 文字2` 即可")
+
+
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+async def style_picture_generator(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await StylePictureGenerator.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def style_picture_generator_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await StylePictureGeneratorHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+async def style_picture_generator(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await StylePictureGenerator.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class StylePictureGeneratorHandler(AbstractHandler):
+class StylePictureGenerator(AbstractHandler):
     """
     风格图片生成Handler
     """
-    __name__ = "StylePictureGeneratorHandler"
-    __description__ = "一个可以生成风格图片的Handler"
-    __usage__ = "在群中发送 `5000兆 文字1 文字2` 即可"
+    __name__ = "StylePictureGenerator"
+    __description__ = "一个可以生成不同风格图片的插件"
+    __usage__ = "在群中发送 `[5000兆|ph|yt] 文字1 文字2` 即可"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         message_text = message.asDisplay()
         if re.match("5000兆 .* .*", message_text):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            return await StylePictureGeneratorHandler.gosencho_en_hoshi_style_image_generator(group, member, message)
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            return await StylePictureGenerator.gosencho_en_hoshi_style_image_generator(group, member, message)
         elif re.match("ph .* .*", message_text):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            return await StylePictureGeneratorHandler.pornhub_style_image_generator(group, member, message)
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            return await StylePictureGenerator.pornhub_style_image_generator(group, member, message)
         elif re.match("yt .* .*", message_text):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            return await StylePictureGeneratorHandler.youtube_style_image_generator(group, member, message)
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            return await StylePictureGenerator.youtube_style_image_generator(group, member, message)
         else:
             return None
 

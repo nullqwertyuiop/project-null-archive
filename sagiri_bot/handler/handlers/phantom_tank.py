@@ -3,45 +3,58 @@ import numpy as np
 from io import BytesIO
 from PIL import Image as IMG
 from PIL import ImageEnhance
+from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.chain import MessageChain
-from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.message.element import Plain, Image
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.decorators import frequency_limit_require_weight_free
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.utils import update_user_call_count_plus1, UserCalledCount
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.decorators import frequency_limit_require_weight_free
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
 
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("PhantomTank")
+channel.author("SAGIRI-kawaii")
+channel.description("一个幻影坦克生成器，在群中发送 `幻影 [显示图] [隐藏图]` 即可")
+
+
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+async def phantom_tank(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await PhantomTank.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def phantom_tank_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await PhantomTankHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+async def phantom_tank(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await PhantomTank.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class PhantomTankHandler(AbstractHandler):
-    __name__ = "PhantomTankHandler"
-    __description__ = "一个幻影坦克生成器Handler"
+class PhantomTank(AbstractHandler):
+    __name__ = "PhantomTank"
+    __description__ = "一个幻影坦克生成器"
     __usage__ = "在群中发送 `幻影 [显示图] [隐藏图]` 即可"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         message_text = "".join([plain.text for plain in message.get(Plain)]).strip()
         if message_text == "幻影" or message_text == "彩色幻影":
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             if len(message.get(Image)) != 2:
                 return MessageItem(
                     MessageChain.create([Plain(text="非预期图片数！请按照 `显示图 隐藏图` 顺序发送，一共两张图片")]),
@@ -58,7 +71,9 @@ class PhantomTankHandler(AbstractHandler):
                     async with session.get(url=hide_img.url) as resp:
                         hide_img = IMG.open(BytesIO(await resp.read()))
 
-                return await PhantomTankHandler.get_phantom_message(group, member, display_img, hide_img) if message_text == "幻影" else await PhantomTankHandler.get_colorful_phantom_message(group, member, display_img, hide_img)
+                return await PhantomTank.get_phantom_message(group, member, display_img, hide_img) \
+                    if message_text == "幻影" else \
+                    await PhantomTank.get_colorful_phantom_message(group, member, display_img, hide_img)
         else:
             return None
 
@@ -66,7 +81,7 @@ class PhantomTankHandler(AbstractHandler):
     @frequency_limit_require_weight_free(2)
     async def get_phantom_message(group: Group, member: Member, display_img: IMG, hide_img: IMG):
         return MessageItem(
-            MessageChain.create([Image(data_bytes=await PhantomTankHandler.make_tank(display_img, hide_img))]),
+            MessageChain.create([Image(data_bytes=await PhantomTank.make_tank(display_img, hide_img))]),
             QuoteSource()
         )
 
@@ -74,7 +89,7 @@ class PhantomTankHandler(AbstractHandler):
     @frequency_limit_require_weight_free(2)
     async def get_colorful_phantom_message(group: Group, member: Member, display_img: IMG, hide_img: IMG):
         return MessageItem(
-            MessageChain.create([Image(data_bytes=await PhantomTankHandler.colorful_tank(display_img, hide_img))]),
+            MessageChain.create([Image(data_bytes=await PhantomTank.colorful_tank(display_img, hide_img))]),
             QuoteSource()
         )
 
@@ -86,7 +101,7 @@ class PhantomTankHandler(AbstractHandler):
     async def make_tank(im_1: IMG, im_2: IMG) -> bytes:
         im_1 = im_1.convert("L")
         im_2 = im_2.convert("L")
-        max_size = PhantomTankHandler.get_max_size(im_1.size, im_2.size)
+        max_size = PhantomTank.get_max_size(im_1.size, im_2.size)
         if max_size == im_1.size:
             im_2 = im_2.resize(max_size)
         else:

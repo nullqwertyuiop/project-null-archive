@@ -1,49 +1,64 @@
 import re
 import aiohttp
+from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from SAGIRIBOT.utils import get_setting
-from SAGIRIBOT.ORM.AsyncORM import Setting
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.utils import update_user_call_count_plus1, UserCalledCount
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource, Normal
-from SAGIRIBOT.decorators import frequency_limit_require_weight_free, switch, blacklist
+from sagiri_bot.utils import get_setting
+from sagiri_bot.orm.async_orm import Setting
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.strategy import QuoteSource, Normal
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
+from sagiri_bot.decorators import frequency_limit_require_weight_free, switch, blacklist
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("NetworkCompiler")
+channel.author("SAGIRI-kawaii")
+channel.description("一个网络编译器插件，在群中发送 `super language\\n code`即可")
+
+
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+async def network_compiler(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await NetworkCompiler.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def network_compiler_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await NetworkCompilerHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+async def network_compiler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await NetworkCompiler.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class NetworkCompilerHandler(AbstractHandler):
-    __name__ = "NetworkCompilerHandler"
-    __description__ = "一个网络编译器Handler"
+class NetworkCompiler(AbstractHandler):
+    __name__ = "NetworkCompiler"
+    __description__ = "一个网络编译器插件"
     __usage__ = "在群中发送 `super language\\ncode`即可"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         message_text = message.asDisplay()
         if re.match(r"super .*[\n\r]+[\s\S]*", message_text):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            if not await get_setting(group.id, Setting.compile):
-                return MessageItem(MessageChain.create([Plain(text="该功能已关闭，请阅读文档或联系机器人管理员开启。")]), Normal())
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+                if not await get_setting(group.id, Setting.compile):
+                    return MessageItem(MessageChain.create([
+                        Plain(text="该功能已关闭，请阅读文档或联系机器人管理员开启。")
+                    ]), Normal())
             language = re.findall(r"super (.*?)[\n\r]+[\s\S]*", message_text, re.S)[0]
             code = message_text[7 + len(language):]
-            result = await NetworkCompilerHandler.network_compiler(group, member, language, code)
+            result = await NetworkCompiler.network_compiler(group, member, language, code)
             if isinstance(result, str):
                 return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
             else:
@@ -92,7 +107,8 @@ class NetworkCompilerHandler(AbstractHandler):
             "fileext": language
         }
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/87.0.4280.141 Safari/537.36 "
         }
         async with aiohttp.ClientSession() as session:
             async with session.post(url=url, headers=headers, data=payload) as resp:
