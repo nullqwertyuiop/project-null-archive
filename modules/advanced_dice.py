@@ -78,7 +78,10 @@ class AdvancedDice(AbstractHandler):
         if point == dice:
             return f"{text} 检定：D{max_point}={point}/{dice}【刚好成功】"
         elif 0 < point <= 5:
-            return f"{text} 检定：D{max_point}={point}/{dice}【大成功】"
+            if point < dice:
+                return f"{text} 检定：D{max_point}={point}/{dice}【大成功】"
+            else:
+                return f"{text} 检定：D{max_point}={point}/{dice}【失败】"
         elif 5 < point < dice:
             return f"{text} 检定：D{max_point}={point}/{dice}【成功】"
         elif dice < point < (max_point - 5):

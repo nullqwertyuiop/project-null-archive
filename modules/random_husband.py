@@ -69,7 +69,8 @@ class RandomHusbandHandler(AbstractHandler):
                     return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "mixed")),
+            return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(
+                member=member, group=group, friend=friend, pool="mixed")),
                                QuoteSource())
         elif message.asDisplay() in ("随机兽人老公", "隨機獸人老公"):
             if member and group:
@@ -77,7 +78,8 @@ class RandomHusbandHandler(AbstractHandler):
                     return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "furry")),
+            return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(
+                member=member, group=group, friend=friend, pool="furry")),
                                QuoteSource())
         elif message.asDisplay() in ("随机人类老公", "隨機人類老公"):
             if member and group:
@@ -85,7 +87,8 @@ class RandomHusbandHandler(AbstractHandler):
                     return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "human")),
+            return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(
+                member=member, group=group, friend=friend, pool="human")),
                                QuoteSource())
         elif message.asDisplay() in ("十连老公", "十連老公"):
             if member and group:
@@ -93,7 +96,8 @@ class RandomHusbandHandler(AbstractHandler):
                     return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "mixed")),
+            return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(
+                member=member, group=group, friend=friend, pool="mixed")),
                                QuoteSource())
         elif message.asDisplay() in ("十连兽人老公", "十連獸人老公"):
             if member and group:
@@ -101,7 +105,8 @@ class RandomHusbandHandler(AbstractHandler):
                     return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "furry")),
+            return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(
+                member=member, group=group, friend=friend, pool="furry")),
                                QuoteSource())
         elif message.asDisplay() in ("十连人类老公", "十連人類老公"):
             if member and group:
@@ -109,7 +114,8 @@ class RandomHusbandHandler(AbstractHandler):
                     return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "human")),
+            return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(
+                member=member, group=group, friend=friend, pool="human")),
                                QuoteSource())
         elif re.match("\d+(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公", message.asDisplay()):
             times = re.compile("(\d+)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公").search(message.asDisplay()).group(1)
@@ -128,7 +134,8 @@ class RandomHusbandHandler(AbstractHandler):
             else:
                 pool = "mixed"
             return MessageItem(MessageChain.create(
-                await RandomHusbandHandler.get_custom(member, group, pool, times)),
+                await RandomHusbandHandler.get_custom(
+                    pool=pool, times=times, member=member, group=group, friend=friend)),
                 QuoteSource())
         else:
             return None
@@ -143,8 +150,8 @@ class RandomHusbandHandler(AbstractHandler):
             select(
                 RandomHusband.last_date,
                 RandomHusband.last_file
-            ).where(RandomHusband.qq == member.id if member else friend.id,
-                    RandomHusband.group == group.id if group else 0,
+            ).where(RandomHusband.qq == (member.id if member else friend.id),
+                    RandomHusband.group == (group.id if group else 0),
                     RandomHusband.last_date == int(datetime.today().strftime('%Y%m%d'))))
         if fetch:
             try:
@@ -168,15 +175,15 @@ class RandomHusbandHandler(AbstractHandler):
             file_name = choice.split("/")[-2:]
             f_name = file_name[0] + "/" + file_name[1]
             husband = husband.resize((95 + randrange(11), 95 + randrange(11)))
-            if member and group:
-                await orm.insert_or_update(
-                    RandomHusband,
-                    [RandomHusband.qq == member.id, RandomHusband.group == group.id],
-                    {"group": group.id if group else 0,
-                     "qq": member.id if member else friend.id,
-                     "last_date": int(datetime.today().strftime('%Y%m%d')),
-                     "last_file": f_name}
-                )
+            await orm.insert_or_update(
+                RandomHusband,
+                [RandomHusband.qq == (member.id if member else friend.id),
+                 RandomHusband.group == (group.id if group else 0)],
+                {"group": group.id if group else 0,
+                 "qq": member.id if member else friend.id,
+                 "last_date": int(datetime.today().strftime('%Y%m%d')),
+                 "last_file": f_name}
+            )
             output = BytesIO()
             husband.save(output, format='png')
             return [Image(data_bytes=output.getvalue())]
@@ -195,9 +202,9 @@ class RandomHusbandHandler(AbstractHandler):
         return output.getvalue()
 
     @staticmethod
-    async def get_ten(member: Member, group: Group, pool: str):
+    async def get_ten(pool: str, member: Member = None, group: Group = None, friend: Friend = None):
         if not member and not group:
-            return None
+            return [Plain(text=f"暂不支持私聊使用。")]
         fetch = await orm.fetchall(
             select(
                 Setting.ten_husband_cost,
@@ -254,7 +261,6 @@ class RandomHusbandHandler(AbstractHandler):
                         husband = member_avatar
                         extra += 1
                     result.paste(husband, location[i])
-                result.show()
                 output = BytesIO()
                 result.save(output, format='png')
                 await orm.insert_or_update(
@@ -280,7 +286,9 @@ class RandomHusbandHandler(AbstractHandler):
                             Plain(text=f"你今日在本群还剩抽取次数 {limit - ten_husband_times - 1} 次。")]
 
     @staticmethod
-    async def get_custom(member: Member, group: Group, pool: str, times: int):
+    async def get_custom(pool: str, times: int = 10, member: Member = None, group: Group = None, friend: Friend = None):
+        if not member and not group:
+            return [Plain(text=f"暂不支持私聊使用。")]
         fetch = await orm.fetchall(
             select(
                 Setting.ten_husband_cost,

@@ -22,7 +22,7 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, MigrateProstitute, Setting, Prostitute
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import get_setting
-from modules.wallet import wallet_handler
+from modules.wallet import Wallet
 
 saya = Saya.current()
 channel = Channel.current()
@@ -283,7 +283,7 @@ class ImprovedSignIn(AbstractHandler):
                     Prostitute.pay
                 ).where(Prostitute.qq == member.id, Prostitute.group_id == 0))
             if fetch:
-                await wallet_handler.update(group, member, fetch[0][2], "站街模块迁移")
+                await Wallet.update(group, member, fetch[0][2], "站街模块迁移")
                 await orm.insert_or_update(
                     Prostitute,
                     [Prostitute.qq == member.id],
@@ -307,7 +307,7 @@ class ImprovedSignIn(AbstractHandler):
         else:
             clients = int(fetch[0][0])
             date = int(fetch[0][1])
-        wallet = await wallet_handler.get_balance(group, member)
+        wallet = await Wallet.get_balance(group, member)
         pay = wallet if wallet else 0
         current_date = int(datetime.today().strftime('%Y%m%d'))
         if date == current_date:
@@ -347,7 +347,7 @@ class ImprovedSignIn(AbstractHandler):
                              "pay": pay,
                              "last_date": current_date}
                         )
-                        await wallet_handler.update(group, member, (today_pay - lost), "站街")
+                        await Wallet.update(group, member, (today_pay - lost), "站街")
                         if today_clients == 0:
                             text = f"尽管你今天没接到客人，你还是被逮住了，被罚了 {lost} 块\n卖铺时间：{current_time}\n" \
                                    f"现共接客： {clients} 人，\n现有工资 {pay} 硬币"
@@ -381,7 +381,7 @@ class ImprovedSignIn(AbstractHandler):
                              "pay": pay,
                              "last_date": current_date}
                         )
-                        await wallet_handler.update(group, member, today_pay, "站街")
+                        await Wallet.update(group, member, today_pay, "站街")
                         if today_clients == 0:
                             text = f"尽管你今天没接到客，你还是被逮住了，但是你以独特的骚劲儿令逮捕你的人瞠目结舌，" \
                                    f"你又接了 {bonus_client} 个，工资 {today_pay} 硬币\n" \
@@ -406,7 +406,7 @@ class ImprovedSignIn(AbstractHandler):
                          "client": clients,
                          "pay": pay,
                          "last_date": current_date})
-                    await wallet_handler.update(group, member, today_pay, "站街")
+                    await Wallet.update(group, member, today_pay, "站街")
                     if today_clients == 0:
                         text = f"可惜，今天你没有接到客人，\n卖铺时间：{current_time}\n现共接客： {clients} 人，\n" \
                                f"现有工资 {pay} 硬币"

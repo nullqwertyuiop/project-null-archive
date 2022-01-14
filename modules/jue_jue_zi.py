@@ -5,7 +5,7 @@ import re
 from random import randrange
 
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from graia.ariadne.model import Friend
@@ -30,7 +30,7 @@ with open(f"{os.getcwd()}/statics/juejuezi.json", "r", encoding="utf-8") as r:
     juejuezi = json.loads(r.read())
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def jue_jue_zi_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await JueJueZi.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)

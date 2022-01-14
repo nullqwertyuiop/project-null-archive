@@ -152,7 +152,6 @@ class BilibiliLinkResolve(AbstractHandler):
             config = BilibiliLinkResolve.fall_back_config
         data = info["data"]
         chain_list = []
-        print(config)
 
         async def replace_variable(text: str) -> str:
             try:

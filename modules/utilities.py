@@ -24,6 +24,10 @@ from sagiri_bot.utils import user_permission_require, get_config
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("Utilities")
+channel.author("nullqwertyuiop")
+channel.description("实用工具")
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def utilities_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):

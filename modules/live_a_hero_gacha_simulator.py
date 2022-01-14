@@ -8,7 +8,7 @@ from random import randrange
 from PIL import Image as IMG
 from PIL import ImageFont, ImageDraw
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
 from graia.ariadne.model import MemberPerm, Friend
@@ -95,7 +95,7 @@ except FileNotFoundError as err:
     print(err)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def live_a_hero_gacha_simulator_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await LiveAHeroGachaSimulator.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)

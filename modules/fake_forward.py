@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, ForwardNode, Forward
 from graia.ariadne.model import Friend
@@ -23,7 +23,7 @@ channel.author("nullqwertyuiop")
 channel.description("更加高级的伪造功能，不要让我踢你的屁股")
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def fake_forward_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await FakeForward.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
@@ -73,7 +73,7 @@ class FakeForward(AbstractHandler):
             else:
                 fwd_nodelist.append(
                     ForwardNode(
-                        target=member.id,
+                        target=member.id if member else friend.id,
                         time=datetime.now(),
                         name="已构造的消息",
                         message=MessageChain.create(Plain(text=f"本条转发消息为已构造的消息。\n"

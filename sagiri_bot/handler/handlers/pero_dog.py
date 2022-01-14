@@ -6,7 +6,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.message.element import Plain
 from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.message_sender.strategy import Normal
@@ -24,7 +24,7 @@ channel.author("SAGIRI-kawaii")
 channel.description("一个获取舔狗日记的插件，在群中发送 `舔` 即可")
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def pero_dog(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await PeroDog.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)

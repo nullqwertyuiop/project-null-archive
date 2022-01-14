@@ -247,7 +247,7 @@ class GoSenChoEnHoShiStyleUtils:
         # width = max_width
         alpha = (0, 0, 0, 0)
         leftmargin = 50
-        font_upper = ImageFont.truetype(f"{os.getcwd()}/statics/fonts/NotoSansCJKSC-Bold.ttf", _round(height / 3))
+        font_upper = ImageFont.truetype(f"{os.getcwd()}/statics/fonts/NotoSansCJKsc-Medium.ttf", _round(height / 3))
         font_downer = ImageFont.truetype(f"{os.getcwd()}/statics/fonts/NotoSerifCJKSC-Black.ttf", _round(height / 3))
 
         # Prepare Width
@@ -276,7 +276,7 @@ class GoSenChoEnHoShiStyleUtils:
         mask_img_upper = list()
         upper_data = [
             [
-                (4, 4), (4, 4), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0)
+                (20, 4), (20, 4), (16, 0), (16, 0), (16, 0), (16, 0), (16, 0)
             ], [
                 22, 20, 16, 10, 6, 6, 4, 0
             ], [

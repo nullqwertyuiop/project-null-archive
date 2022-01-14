@@ -62,7 +62,7 @@ async def friend_message_listener(message: MessageChain, friend: Friend):
 
 
 @bcc.receiver("TempMessage")
-async def friend_message_listener(app: Ariadne, message: MessageChain, group: Group, member: Member):
+async def temp_message_listener(app: Ariadne, message: MessageChain, group: Group, member: Member):
     message_text_log = message.asDisplay().replace("\n", "\\n")
     logger.info(f"收到来自群 <{group.name}> 中成员 <{member.name}> 的临时消息：{message_text_log}")
     try:

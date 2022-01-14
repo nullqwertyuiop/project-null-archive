@@ -20,7 +20,7 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, SignInReward, Setting, UserCalledCount
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import get_setting, update_user_call_count_plus
-from modules.wallet import wallet_handler
+from modules.wallet import Wallet
 
 saya = Saya.current()
 channel = Channel.current()
@@ -77,7 +77,7 @@ class SignInRewardHandler(AbstractHandler):
                 ).where(SignInReward.qq == member.id, SignInReward.group_id == 0)
             )
             if fetch:
-                await wallet_handler.update(group, member, fetch[0][0], "签到模块迁移")
+                await Wallet.update(group, member, fetch[0][0], "签到模块迁移")
                 await orm.insert_or_update(
                     SignInReward,
                     [SignInReward.qq == member.id, SignInReward.group_id == group.id],
@@ -101,7 +101,7 @@ class SignInRewardHandler(AbstractHandler):
         else:
             last_date = int(fetch[0][0])
             streak = int(fetch[0][1])
-        wallet = await wallet_handler.get_balance(group, member)
+        wallet = await Wallet.get_balance(group, member)
         coins = wallet if wallet else 0
         current_date = int(time.localtime().tm_yday)
         extra = False
@@ -138,7 +138,7 @@ class SignInRewardHandler(AbstractHandler):
                      "coin": coins,
                      "last_date": current_date,
                      "streak": streak})
-                await wallet_handler.update(group, member, today_coins, "签到")
+                await Wallet.update(group, member, today_coins, "签到")
                 text = f"签到成功！\n获得硬币：{today_coins} 个，\n现有硬币：{coins} 个，\n签到时间：{current_time}，\n" \
                        f"连续签到：{streak} 天"
                 return text

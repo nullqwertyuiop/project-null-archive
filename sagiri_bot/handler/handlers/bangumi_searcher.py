@@ -105,7 +105,7 @@ class BangumiSearcher(AbstractHandler):
             else:
                 @Waiter.create_using_function([FriendMessage])
                 def waiter(
-                        event: GroupMessage, waiter_friend: Friend,
+                        event: FriendMessage, waiter_friend: Friend,
                         waiter_message: MessageChain
                 ):
                     nonlocal image_get

@@ -39,15 +39,15 @@ class Repeater(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
         message_serialization = message.asPersistentString()
         if await get_setting(group.id, Setting.repeat):
-            if group.id in Repeater.group_repeat.keys():
-                pass
+            if group.id not in Repeater.group_repeat.keys():
+                Repeater.group_repeat[group.id] = {"msg": message_serialization, "count": 1}
             else:
                 if message_serialization == Repeater.group_repeat[group.id]["msg"]:
                     count = Repeater.group_repeat[group.id]["count"] + 1
                     if count == 3:
+                        Repeater.group_repeat[group.id]["count"] = count
                         if message.has(Image) and not await get_setting(group.id, Setting.trusted):
                             return None
-                        Repeater.group_repeat[group.id]["count"] = count
                         return MessageItem(message.asSendable(), Normal())
                     else:
                         Repeater.group_repeat[group.id]["count"] = count
@@ -55,5 +55,4 @@ class Repeater(AbstractHandler):
                 else:
                     Repeater.group_repeat[group.id]["msg"] = message_serialization
                     Repeater.group_repeat[group.id]["count"] = 1
-                Repeater.group_repeat[group.id] = {"msg": message_serialization, "count": 1}
         return None

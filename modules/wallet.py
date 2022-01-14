@@ -20,10 +20,14 @@ from sagiri_bot.decorators import switch, blacklist
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("Wallet")
+channel.author("nullqwertyuiop")
+channel.description("钱包")
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def wallet_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await WalletBalance.handle(app, message, group=group, member=member):
+    if result := await Wallet.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -42,7 +46,7 @@ class Wallet(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
         if message.asDisplay() == "钱包":
-            return await WalletBalance.get_balance(group, member, balance_only=False)
+            return await Wallet.get_balance(group, member, balance_only=False)
         else:
             return None
 
@@ -109,7 +113,7 @@ class Wallet(AbstractHandler):
 
     @staticmethod
     async def charge(group: Union[Group, int], member: Union[Member, int], record: int, reason: str = ""):
-        return await WalletBalance.update(group, member, (record * -1), reason)
+        return await Wallet.update(group, member, (record * -1), reason)
 
     @staticmethod
     async def get_detail(group: Union[Group, int], member: Union[Member, int]):
@@ -130,23 +134,23 @@ class Wallet(AbstractHandler):
     async def debug(group: Union[Group, None] = None, member: Union[Member, None] = None, add: bool = True):
         if add:
             if group:
-                if group.id in WalletBalance.privilege['group']:
-                    WalletBalance.privilege['group'].append(group.id)
+                if group.id in Wallet.privilege['group']:
+                    Wallet.privilege['group'].append(group.id)
                 else:
                     return
             elif member:
-                if member.id in WalletBalance.privilege['member']:
-                    WalletBalance.privilege['member'].append(member.id)
+                if member.id in Wallet.privilege['member']:
+                    Wallet.privilege['member'].append(member.id)
                 else:
                     return
         else:
             if group:
-                if group.id in WalletBalance.privilege['group']:
-                    WalletBalance.privilege['group'].remove(group.id)
+                if group.id in Wallet.privilege['group']:
+                    Wallet.privilege['group'].remove(group.id)
                 else:
                     return
             elif member:
-                if member.id in WalletBalance.privilege['member']:
-                    WalletBalance.privilege['member'].remove(member.id)
+                if member.id in Wallet.privilege['member']:
+                    Wallet.privilege['member'].remove(member.id)
                 else:
                     return

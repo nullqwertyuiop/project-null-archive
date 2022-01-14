@@ -8,7 +8,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.message.element import Plain
 from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
 from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.decorators import switch, blacklist
@@ -37,7 +37,7 @@ config = core.get_config()
 proxy = config.proxy if config.proxy != "proxy" else ''
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def trending(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await Trending.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
@@ -64,13 +64,16 @@ class Trending(AbstractHandler):
                      member: Member = None, friend: Friend = None):
         message_text = message.asDisplay()
         if message_text == "微博热搜":
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return await Trending.get_weibo_trending(group, member)
         elif message_text == "知乎热搜":
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return await Trending.get_zhihu_trending(group, member)
         elif message_text == "github热搜":
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return await Trending.get_github_trending(group, member)
         else:
             return None
@@ -83,7 +86,7 @@ class Trending(AbstractHandler):
             async with session.get(url=weibo_hot_url) as resp:
                 data = await resp.json()
         data = data["data"]
-        text_list = [f"随机数:{random.randint(0, 10000)}", "\n微博实时热榜:"]
+        text_list = ["微博实时热榜:"]
         index = 0
         for i in data:
             index += 1
@@ -99,7 +102,7 @@ class Trending(AbstractHandler):
             async with session.get(url=zhihu_hot_url) as resp:
                 data = await resp.json()
         data = data["data"]
-        text_list = [f"随机数:{random.randint(0, 10000)}", "\n知乎实时热榜:"]
+        text_list = ["知乎实时热榜:"]
         index = 0
         for i in data:
             index += 1
@@ -121,7 +124,7 @@ class Trending(AbstractHandler):
         soup = BeautifulSoup(html, "html.parser")
         articles = soup.find_all("article", {"class": "Box-row"})
 
-        text_list = [f"随机数:{random.randint(0, 10000)}", "\nGitHub实时热榜:\n"]
+        text_list = ["GitHub实时热榜:\n"]
         index = 0
         for i in articles:
             try:
