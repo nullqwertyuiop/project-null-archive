@@ -2,6 +2,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
@@ -15,15 +16,19 @@ from sagiri_bot.orm.async_orm import orm, Setting, BlackList, PermanentBlackList
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("SettingsCheck")
+channel.author("nullqwertyuiop")
+channel.description("设置检查")
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def settings_check_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await SettingsCheckHandler.handle(app, message, group, member):
+    if result := await SettingsCheckHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class SettingsCheckHandler(AbstractHandler):
-    __name__ = "NoticeHandler"
+    __name__ = "Notice"
     __description__ = "公告 Handler"
     __usage__ = "None"
     status_cord = {
@@ -42,7 +47,8 @@ class SettingsCheckHandler(AbstractHandler):
     }
 
     @staticmethod
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay().startswith("本群授权状态"):
             check = await orm.fetchall(
                 select(

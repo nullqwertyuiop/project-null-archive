@@ -1,25 +1,24 @@
 import base64
 import binascii
 import re
-import time
 
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
-from graia.ariadne.model import MemberPerm
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.model import MemberPerm, Friend
 from graia.broadcast.interrupt import Waiter, InterruptControl
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
 from sagiri_bot.core.app_core import AppCore
+from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource, Normal
 from sagiri_bot.orm.async_orm import orm, Setting, UserPermission
-from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import user_permission_require, get_config
 
 saya = Saya.current()
@@ -28,7 +27,7 @@ channel = Channel.current()
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def utilities_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await UtilitiesHandler.handle(app, message, group, member):
+    if result := await UtilitiesHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -173,8 +172,9 @@ class UtilitiesHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
-        if message.asDisplay().startswith("utils#permission"):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
+        if message.asDisplay().startswith("工具#权限"):
             if len(message.asDisplay().split("#")) == 2:
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.get_permission_member(member, group))
@@ -424,13 +424,11 @@ class UtilitiesHandler(AbstractHandler):
         else:
             bot_permission = str(fetch[0][0])
         group_permission = str(member.permission)
-        return f"Utilities (Permission Service)\n" \
+        return f"工具（权限服务）\n" \
                f"----------\n" \
-               f"Permission(s) of user {member.name}({member.id}) in group {group.name}({group.id}): \n" \
-               f"Group_perm: {group_permission}\n" \
-               f"Bot_perm: {bot_permission}\n" \
-               f"----------\n" \
-               f"Fetched at {str(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))}"
+               f"用户 {member.name}({member.id}) 在群 {group.name}({group.id}) 中的权限 \n" \
+               f"群组权限: {group_permission}\n" \
+               f"机器权限: {bot_permission}"
 
     @staticmethod
     async def get_permission_id(member_id: int, group: Group, app: Ariadne):
@@ -440,25 +438,21 @@ class UtilitiesHandler(AbstractHandler):
             ).where(UserPermission.group_id == group.id, UserPermission.member_id == member_id)
         )
         if not fetch:
-            bot_permission = "1 (undefined)"
+            bot_permission = "1 (未定义)"
         else:
             bot_permission = str(fetch[0][0])
         if member := await app.getMember(group, member_id):
             group_permission = str(member.permission)
-            return f"Utilities (Permission Service)\n" \
+            return f"工具（权限服务）\n" \
                    f"----------\n" \
-                   f"Permission(s) of user {member.name}({member.id}) in group {group.name}({group.id}): \n" \
-                   f"Group_perm: {group_permission}\n" \
-                   f"Bot_perm: {bot_permission}\n" \
-                   f"----------\n" \
-                   f"Fetched at {str(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))}"
+                   f"用户 {member.name}({member.id}) 在群 {group.name}({group.id}) 中的权限 \n" \
+                   f"群组权限: {group_permission}\n" \
+                   f"机器权限: {bot_permission}\n"
         else:
-            return f"Utilities (Permission Service)\n" \
+            return f"工具（权限服务）\n" \
                    f"----------\n" \
-                   f"Permission(s) of user {member_id}: \n" \
-                   f"Bot_perm: {bot_permission}\n" \
-                   f"----------\n" \
-                   f"Fetched at {str(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))}"
+                   f"用户 {member.name}({member.id}) 的权限 \n" \
+                   f"机器权限: {bot_permission}\n"
 
     @staticmethod
     async def base64_encode(encode: str):

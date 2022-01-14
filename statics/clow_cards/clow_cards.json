@@ -1,0 +1,375 @@
+{
+  "clow": {
+    "arrow.jpg": {
+      "name_eng": "Arrow",
+      "name_jpn": "矢",
+      "disc": "具有射箭的魔法",
+      "meaning": "能量的高涨、积极性",
+      "poker": "方块A"
+    },
+    "big.jpg": {
+      "name_eng": "Big",
+      "name_jpn": "大",
+      "disc": "具有将人或物放大的魔法",
+      "meaning": "极大的可能性与能力，知识欲的提高",
+      "poker": "红心A"
+    },
+    "bubbles.jpg": {
+      "name_eng": "Bubbles",
+      "name_jpn": "泡",
+      "disc": "具有制造泡沫，并有洗濯功能的魔法",
+      "meaning": "感情的净化，由恶性循环脱离的时机",
+      "poker": "方块2"
+    },
+    "change.jpg": {
+      "name_eng": "Change",
+      "name_jpn": "替",
+      "disc": "具有同时将两人的心，身体交换的魔法",
+      "meaning": "心情的切换、浪费",
+      "poker": "梅花A"
+    },
+    "cloud.jpg": {
+      "name_eng": "Cloud",
+      "name_jpn": "雲",
+      "disc": "具有操控云的魔法",
+      "meaning": "你的决断将造成决定性的结果",
+      "poker": "黑桃A"
+    },
+    "create.jpg": {
+      "name_eng": "Create",
+      "name_jpn": "創",
+      "disc": "具有将书中写的事物实体化的魔法",
+      "meaning": "丰富的感受性感受力的开花结果",
+      "poker": "黑桃2"
+    },
+    "dark.jpg": {
+      "name_eng": "Dark",
+      "name_jpn": "闇",
+      "disc": "月所支配的第一张库洛牌，具有黑暗的魔法",
+      "meaning": "照旧、顺着自然的发展前进",
+      "poker": "黑桃3"
+    },
+    "dash.jpg": {
+      "name_eng": "Dash",
+      "name_jpn": "駆",
+      "disc": "具有快速移动的魔法，但无法持久",
+      "meaning": "以瞬间爆发力得到胜利，与自己的战斗",
+      "poker": "梅花2"
+    },
+    "dream.jpg": {
+      "name_eng": "Dream",
+      "name_jpn": "夢",
+      "disc": "具有预知梦的魔法",
+      "meaning": "了解自己的机会，潜在意识的发展期",
+      "poker": "红心2"
+    },
+    "earthy.jpg": {
+      "name_eng": "Earthy",
+      "name_jpn": "地",
+      "disc": "四大元素之一，具有操控土的魔法",
+      "meaning": "生命的发源地，努力与包容性的象征",
+      "poker": "梅花8"
+    },
+    "erase.jpg": {
+      "name_eng": "Erase",
+      "name_jpn": "消",
+      "disc": "具有将人或物消失的魔法",
+      "meaning": "运气的停滞，等一下的警告",
+      "poker": "梅花3"
+    },
+    "fight.jpg": {
+      "name_eng": "Fight",
+      "name_jpn": "闘",
+      "disc": "具有格斗技巧的魔法，威力取决于使用者的内心",
+      "meaning": "大转机的前兆",
+      "poker": "梅花4"
+    },
+    "firey.jpg": {
+      "name_eng": "Firey",
+      "name_jpn": "火",
+      "disc": "四大元素之一，具有操控火的魔法",
+      "meaning": "强烈的信条信念，突破难关",
+      "poker": "黑桃4"
+    },
+    "float.jpg": {
+      "name_eng": "Float",
+      "name_jpn": "浮",
+      "disc": "具有将人或物浮起的魔法，并可高速移动",
+      "meaning": "由束缚中解放、自由",
+      "poker": "梅花5"
+    },
+    "flower.jpg": {
+      "name_eng": "Flower",
+      "name_jpn": "花",
+      "disc": "具有制造出各种花卉的魔法",
+      "meaning": "成果、报酬、目标达标率很高的时期",
+      "poker": "方块4"
+    },
+    "fly.jpg": {
+      "name_eng": "Fly",
+      "name_jpn": "翔",
+      "disc": "在魔法杖的末端长出羽翼，具有飞行的魔法",
+      "meaning": "挑战飞跃的机会",
+      "poker": "黑桃10"
+    },
+    "freeze.jpg": {
+      "name_eng": "Freeze",
+      "name_jpn": "凍",
+      "disc": "具有将人或物结冻的魔法",
+      "meaning": "基础能力的成型，我行我素也OK",
+      "poker": "梅花7"
+    },
+    "glow.jpg": {
+      "name_eng": "Glow",
+      "name_jpn": "灯",
+      "disc": "具有放出微弱光芒的魔法",
+      "meaning": "幸运的预兆",
+      "poker": "红心3"
+    },
+    "illusion.jpg": {
+      "name_eng": "Illusion",
+      "name_jpn": "幻",
+      "disc": "具有让对手想出心中思念的事，并产生幻觉的魔法",
+      "meaning": "想要从现实中逃离的欲望",
+      "poker": "红心4"
+    },
+    "jump.jpg": {
+      "name_eng": "Jump",
+      "name_jpn": "跳",
+      "disc": "在脚上长出小羽翼，具有高度跳跃的魔法",
+      "meaning": "实力发挥、最佳状态",
+      "poker": "梅花8"
+    },
+    "libra.jpg": {
+      "name_eng": "Libra",
+      "name_jpn": "秤",
+      "disc": "具有辨别说话真伪的魔法",
+      "meaning": "具有辨别说话真伪的魔法",
+      "poker": "方块5"
+    },
+    "light.jpg": {
+      "name_eng": "Light",
+      "name_jpn": "光",
+      "disc": "可鲁贝洛斯所支配的第一张库洛牌，具有强烈光的魔法",
+      "meaning": "由自己来主导对未来的展望",
+      "poker": "黑桃5"
+    },
+    "little.jpg": {
+      "name_eng": "Little",
+      "name_jpn": "小",
+      "disc": "具有将人或物缩小的魔法",
+      "meaning": "虽然小,却也是有意义的蜕变期",
+      "poker": "红心5"
+    },
+    "lock.jpg": {
+      "name_eng": "Lock",
+      "name_jpn": "錠",
+      "disc": "具有将房间锁上的魔法",
+      "meaning": "智能、英知。对真实、内心的察觉",
+      "poker": "方块6"
+    },
+    "loop.jpg": {
+      "name_eng": "Loop",
+      "name_jpn": "輪",
+      "disc": "具有将空间分割结合的魔法",
+      "meaning": "连结、更上一层楼的机会",
+      "poker": "方块7"
+    },
+    "maze.jpg": {
+      "name_eng": "Maze",
+      "name_jpn": "迷",
+      "disc": "具有将空间变成巨大迷宫的魔法",
+      "meaning": "丧失自信、混乱",
+      "poker": "红心6"
+    },
+    "mirror.jpg": {
+      "name_eng": "Mirror",
+      "name_jpn": "鏡",
+      "disc": "具有复制人或物的魔法，但也可以做一般的镜子",
+      "meaning": "深切看清自己的时期",
+      "poker": "方块8"
+    },
+    "mist.jpg": {
+      "name_eng": "Mist",
+      "name_jpn": "霧",
+      "disc": "具有雾并有腐蚀性的魔法",
+      "meaning": "判定事态，决定出方向",
+      "poker": "黑桃6"
+    },
+    "move.jpg": {
+      "name_eng": "Move",
+      "name_jpn": "移",
+      "disc": "具有瞬间移动的魔法，但无法移动生物或大东西",
+      "meaning": "注意浮躁的行动与发言",
+      "poker": "梅花9"
+    },
+    "nothing.jpg": {
+      "name_eng": "Nothing",
+      "name_jpn": "無",
+      "disc": "魔力最强的一张牌，拥有消失的能力",
+      "meaning": "",
+      "poker": ""
+    },
+    "power.jpg": {
+      "name_eng": "Power",
+      "name_jpn": "力",
+      "disc": "具有强大力量的魔法",
+      "meaning": "愿望的实现、扩展",
+      "poker": "红心7"
+    },
+    "rain.jpg": {
+      "name_eng": "Rain",
+      "name_jpn": "雨",
+      "disc": "具有降雨的魔法",
+      "meaning": "最后终究会好转",
+      "poker": "方块7"
+    },
+    "return.jpg": {
+      "name_eng": "Return",
+      "name_jpn": "戻",
+      "disc": "具有返转时间的魔法",
+      "meaning": "败者复活，永不放弃",
+      "poker": "梅花10"
+    },
+    "sand.jpg": {
+      "name_eng": "Sand",
+      "name_jpn": "砂",
+      "disc": "具有操控砂的魔法",
+      "meaning": "不要害怕改变，加以挑战",
+      "poker": "方块9"
+    },
+    "shadow.jpg": {
+      "name_eng": "Shadow",
+      "name_jpn": "影",
+      "disc": "具有操控自己以及别人的影子的魔法",
+      "meaning": "未知的部分，问题的发生与消除",
+      "poker": "方块10"
+    },
+    "shield.jpg": {
+      "name_eng": "Shield",
+      "name_jpn": "盾",
+      "disc": "具有防御攻击的魔法",
+      "meaning": "保护，为了保持调和的防卫手段",
+      "poker": "方块J"
+    },
+    "shot.jpg": {
+      "name_eng": "Shot",
+      "name_jpn": "撃",
+      "disc": "具有射击力的魔法",
+      "meaning": "锁定目标",
+      "poker": "梅花J"
+    },
+    "silent.jpg": {
+      "name_eng": "Silent",
+      "name_jpn": "静",
+      "disc": "具有消去四周声音的魔法",
+      "meaning": "思虑深远、充电期",
+      "poker": "红心8"
+    },
+    "sleep.jpg": {
+      "name_eng": "Sleep",
+      "name_jpn": "眠",
+      "disc": "具有将对手睡眠的魔法",
+      "meaning": "休息、平稳的心境",
+      "poker": "梅花Q"
+    },
+    "snow.jpg": {
+      "name_eng": "Snow",
+      "name_jpn": "雪",
+      "disc": "具有降雪的魔法",
+      "meaning": "崭新的起点、和平、纯净",
+      "poker": "黑桃8"
+    },
+    "song.jpg": {
+      "name_eng": "Song",
+      "name_jpn": "歌",
+      "disc": "具有模仿他人歌声的魔法",
+      "meaning": "欢喜、调和、治疗的力量",
+      "poker": "红心9"
+    },
+    "storm.jpg": {
+      "name_eng": "Storm",
+      "name_jpn": "嵐",
+      "disc": "具有操控暴风雨的魔法",
+      "meaning": "激烈的感情，欲求不满的消解",
+      "poker": "黑桃9"
+    },
+    "sweet.jpg": {
+      "name_eng": "Sweet",
+      "name_jpn": "甘",
+      "disc": "具有将食物变甜，并将物体变成甜食的魔法",
+      "meaning": "新恋情、受欢迎、依赖心的表现",
+      "poker": "红心10"
+    },
+    "sword.jpg": {
+      "name_eng": "Sword",
+      "name_jpn": "剣",
+      "disc": "魔法杖的本身变成剑，威力取决于使用者的内心",
+      "meaning": "真实的探求、报偿，有时是破坏力",
+      "poker": "方块Q"
+    },
+    "through.jpg": {
+      "name_eng": "Through",
+      "name_jpn": "抜",
+      "disc": "具有穿墙的魔法，穿越的厚度依魔力的大小而定",
+      "meaning": "没有预期到的事态的好转",
+      "poker": "梅花K"
+    },
+    "thunder.jpg": {
+      "name_eng": "Thunder",
+      "name_jpn": "雷",
+      "disc": "具有操控雷电的魔法",
+      "meaning": "若能不迷失自己，便能有幸运的发展",
+      "poker": "梅花8"
+    },
+    "time.jpg": {
+      "name_eng": "Time",
+      "name_jpn": "時",
+      "disc": "具有操控时间的魔法，但只能操控一天",
+      "meaning": "各种体验的磨练、自立",
+      "poker": "红心J"
+    },
+    "twin.jpg": {
+      "name_eng": "Twin",
+      "name_jpn": "双",
+      "disc": "具有将人或物变成两个的魔法",
+      "meaning": "最佳搭挡的出现",
+      "poker": "红心Q"
+    },
+    "voice.jpg": {
+      "name_eng": "Voice",
+      "name_jpn": "声",
+      "disc": "具有将声音盗走的魔法",
+      "meaning": "想成为朋友，和睦相处的心情",
+      "poker": "红心K"
+    },
+    "watery.jpg": {
+      "name_eng": "Watery",
+      "name_jpn": "水",
+      "disc": "四大元素之一，具有操控水的魔法",
+      "meaning": "协调性，打开他人心扉的力量",
+      "poker": "黑桃J"
+    },
+    "wave.jpg": {
+      "name_eng": "Wave",
+      "name_jpn": "波",
+      "disc": "具有震波的魔法",
+      "meaning": "柔软的姿态为你带来好运气",
+      "poker": "黑桃Q"
+    },
+    "windy.jpg": {
+      "name_eng": "Windy",
+      "name_jpn": "風",
+      "disc": "四大元素之一，具有操控风的魔法",
+      "meaning": "前进、充实、期待的暗示",
+      "poker": "黑桃K"
+    },
+    "wood.jpg": {
+      "name_eng": "Wood",
+      "name_jpn": "樹",
+      "disc": "具有操控树的魔法",
+      "meaning": "象征各自的成长与发展",
+      "poker": "方块K"
+    }
+  }
+}

@@ -24,13 +24,13 @@ channel.description("更加高级的伪造功能，不要让我踢你的屁股")
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def image_to_url_handler(app: Ariadne, message: MessageChain, friend: Friend):
+async def fake_forward_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await FakeForward.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def image_to_url_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+async def fake_forward_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await FakeForward.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 

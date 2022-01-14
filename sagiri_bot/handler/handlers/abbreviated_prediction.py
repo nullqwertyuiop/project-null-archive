@@ -23,6 +23,7 @@ channel.name("AbbreviatedPrediction")
 channel.author("SAGIRI-kawaii")
 channel.description("获取缩写全称")
 
+
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def abbreviated_prediction_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await AbbreviatedPrediction.handle(app, message, friend=friend):

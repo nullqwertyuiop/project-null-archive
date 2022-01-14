@@ -5,6 +5,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
@@ -22,7 +23,7 @@ channel = Channel.current()
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def wallet_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await WalletBalance.handle(app, message, group, member):
+    if result := await WalletBalance.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -38,7 +39,8 @@ class Wallet(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay() == "钱包":
             return await WalletBalance.get_balance(group, member, balance_only=False)
         else:

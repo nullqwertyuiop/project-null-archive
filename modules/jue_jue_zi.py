@@ -8,6 +8,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
@@ -19,28 +20,41 @@ from sagiri_bot.decorators import switch, blacklist
 
 saya = Saya.current()
 channel = Channel.current()
+
+channel.name("JueJueZi")
+channel.author("nullqwertyuiop")
+channel.description("绝绝子")
+
+
 with open(f"{os.getcwd()}/statics/juejuezi.json", "r", encoding="utf-8") as r:
     juejuezi = json.loads(r.read())
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
+async def jue_jue_zi_handler(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await JueJueZi.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
+
+
+@channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def jue_jue_zi_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await JueJueZiHandler.handle(app, message, group, member):
+    if result := await JueJueZi.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class JueJueZiHandler(AbstractHandler):
-    __name__ = "JueJueZiHandler"
+class JueJueZi(AbstractHandler):
+    __name__ = "JueJueZi"
     __description__ = "绝绝子 Handler"
     __usage__ = "None"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if re.match("绝绝子#.*#.*", message.asDisplay()):
             _, do, what = message.asDisplay().split("#")
-            return MessageItem(MessageChain.create([Plain(text=await JueJueZiHandler.generate(do, what))]),
+            return MessageItem(MessageChain.create([Plain(text=await JueJueZi.generate(do, what))]),
                                QuoteSource())
 
     @staticmethod

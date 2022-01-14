@@ -10,6 +10,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
@@ -21,10 +22,14 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, MigrateProstitute, Setting, Prostitute
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import get_setting
-from modules.WalletHandler import WalletHandler
+from modules.wallet import wallet_handler
 
 saya = Saya.current()
 channel = Channel.current()
+
+channel.name("ImprovedSignIn")
+channel.author("nullqwertyuiop")
+channel.description("猜")
 
 race_list = {
     "人类": "human",
@@ -77,29 +82,30 @@ arrest_text = {"none": [
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def speak_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await ImprovedSignInHandler.handle(app, message, group, member):
+async def improved_sign_in_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await ImprovedSignIn.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class ImprovedSignInHandler(AbstractHandler):
-    __name__ = "ImprovedSignInHandler"
+class ImprovedSignIn(AbstractHandler):
+    __name__ = "ImprovedSignIn"
     __description__ = "卖铺汇总"
     __usage__ = "None"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay() in ("卖铺", "站街", "开张", "賣鋪", "站街", "開張"):
             if not await get_setting(group.id, Setting.prostitute):
                 return None
             return MessageItem(MessageChain.create([
-                # Image(data_bytes=await ImprovedSignInHandler.get_avatar(member.id)),
-                Plain(text=await ImprovedSignInHandler.prostitute_legacy(group, member))]),
+                # Image(data_bytes=await ImprovedSignIn.get_avatar(member.id)),
+                Plain(text=await ImprovedSignIn.prostitute_legacy(group, member))]),
                 QuoteSource())
         elif message.asDisplay() == "站街排行榜":
-            return await ImprovedSignInHandler.prostitute_toplist(app, group, member)
+            return await ImprovedSignIn.prostitute_toplist(app, group, member)
         # elif message.asDisplay() in ("卖铺测试", "站街测试", "开张测试"):
         #     if not await get_setting(group.id, Setting.prostitute):
         #         return None
@@ -107,16 +113,16 @@ class ImprovedSignInHandler(AbstractHandler):
         #         return MessageItem(MessageChain.create([Plain(text="权限不足，无法进行该测试，可申请加入测试计划。")]),
         #                            QuoteSource())
         #     result = []
-        #     # if migrate_result := await ImprovedSignInHandler.migrate_check(member):
+        #     # if migrate_result := await ImprovedSignIn.migrate_check(member):
         #     #     result.extend(migrate_result)
-        #     result.extend(await ImprovedSignInHandler.prostitute(member, group))
+        #     result.extend(await ImprovedSignIn.prostitute(member, group))
         #     return MessageItem(MessageChain.create(result), QuoteSource())
         # elif re.match("更改物种#.*#.*", message.asDisplay() or re.match("更改物種#.*#.*", message.asDisplay())):
         #     if not await get_setting(group.id, Setting.prostitute):
         #         return None
         #     try:
         #         _, subject, race = message.asDisplay().split("#")
-        #         result = [await ImprovedSignInHandler.update_race(member, group, subject, race)]
+        #         result = [await ImprovedSignIn.update_race(member, group, subject, race)]
         #         return MessageItem(MessageChain.create(result), QuoteSource())
         #     except AccountMuted:
         #         logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
@@ -183,7 +189,7 @@ class ImprovedSignInHandler(AbstractHandler):
         if len(prefix):
             result.extend(prefix)
             result.append(Plain(text="----------"))
-        # result.append(Image(data_bytes=await ImprovedSignInHandler.get_avatar(member.id)))
+        # result.append(Image(data_bytes=await ImprovedSignIn.get_avatar(member.id)))
         client = fetch[0][2]
         last_date = fetch[0][3]
         pay = fetch[0][4]
@@ -210,10 +216,10 @@ class ImprovedSignInHandler(AbstractHandler):
                     luck = randrange(101)
                     if luck <= 50:
                         pay = pay - (randrange(3) + 1) * 1000
-                        suffix.append(await ImprovedSignInHandler.arrest_common(today_client))
+                        suffix.append(await ImprovedSignIn.arrest_common(today_client))
                     elif 55 >= luck > 50:
                         pay = pay - 1300
-                        suffix.append(await ImprovedSignInHandler.arrest_zhouyinting(member, group))
+                        suffix.append(await ImprovedSignIn.arrest_zhouyinting(member, group))
                     elif 100 >= luck > 55:
                         pass
             elif client_race == "kemono":
@@ -277,7 +283,7 @@ class ImprovedSignInHandler(AbstractHandler):
                     Prostitute.pay
                 ).where(Prostitute.qq == member.id, Prostitute.group_id == 0))
             if fetch:
-                await WalletHandler.update(group, member, fetch[0][2], "站街模块迁移")
+                await wallet_handler.update(group, member, fetch[0][2], "站街模块迁移")
                 await orm.insert_or_update(
                     Prostitute,
                     [Prostitute.qq == member.id],
@@ -301,7 +307,7 @@ class ImprovedSignInHandler(AbstractHandler):
         else:
             clients = int(fetch[0][0])
             date = int(fetch[0][1])
-        wallet = await WalletHandler.get_balance(group, member)
+        wallet = await wallet_handler.get_balance(group, member)
         pay = wallet if wallet else 0
         current_date = int(datetime.today().strftime('%Y%m%d'))
         if date == current_date:
@@ -341,7 +347,7 @@ class ImprovedSignInHandler(AbstractHandler):
                              "pay": pay,
                              "last_date": current_date}
                         )
-                        await WalletHandler.update(group, member, (today_pay - lost), "站街")
+                        await wallet_handler.update(group, member, (today_pay - lost), "站街")
                         if today_clients == 0:
                             text = f"尽管你今天没接到客人，你还是被逮住了，被罚了 {lost} 块\n卖铺时间：{current_time}\n" \
                                    f"现共接客： {clients} 人，\n现有工资 {pay} 硬币"
@@ -375,7 +381,7 @@ class ImprovedSignInHandler(AbstractHandler):
                              "pay": pay,
                              "last_date": current_date}
                         )
-                        await WalletHandler.update(group, member, today_pay, "站街")
+                        await wallet_handler.update(group, member, today_pay, "站街")
                         if today_clients == 0:
                             text = f"尽管你今天没接到客，你还是被逮住了，但是你以独特的骚劲儿令逮捕你的人瞠目结舌，" \
                                    f"你又接了 {bonus_client} 个，工资 {today_pay} 硬币\n" \
@@ -400,7 +406,7 @@ class ImprovedSignInHandler(AbstractHandler):
                          "client": clients,
                          "pay": pay,
                          "last_date": current_date})
-                    await WalletHandler.update(group, member, today_pay, "站街")
+                    await wallet_handler.update(group, member, today_pay, "站街")
                     if today_clients == 0:
                         text = f"可惜，今天你没有接到客人，\n卖铺时间：{current_time}\n现共接客： {clients} 人，\n" \
                                f"现有工资 {pay} 硬币"

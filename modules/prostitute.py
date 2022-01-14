@@ -10,6 +10,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
@@ -21,16 +22,20 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, Prostitute, SignInReward, Setting
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import get_setting
-from modules.WalletHandler import WalletHandler
+from modules.wallet import wallet_handler
 
 saya = Saya.current()
 channel = Channel.current()
 exchange_ratio = 250
 
+channel.name("Prostitute")
+channel.author("nullqwertyuiop")
+channel.description("某口口相传功能")
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def speak_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await ProstituteHandler.handle(app, message, group, member):
+async def prostitute_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await ProstituteHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -42,7 +47,8 @@ class ProstituteHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         # if message.asDisplay() in ("#卖铺", "#站街", "#开张", "#打工 卖铺", "#打工 站街", "#打工 开张", "卖铺", "站街", "开张"):
         #     if not await get_setting(group.id, Setting.prostitute):
         #         return None
@@ -243,7 +249,7 @@ class ProstituteHandler(AbstractHandler):
             select(
                 Prostitute.client
             ).where(Prostitute.qq == member.id, Prostitute.group_id == group.id))
-        wallet = await WalletHandler.get_balance(group, member)
+        wallet = await wallet_handler.get_balance(group, member)
         wallet = wallet if wallet else 0
         client = int(fetch[0][0]) if fetch else 0
         text = f"你现在一共有 {wallet} 硬币，\n一共接了 {client} 个客人。"

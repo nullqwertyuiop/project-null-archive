@@ -4,7 +4,7 @@ from io import BytesIO
 
 import qrcode
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage, TempMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Xml, Plain, Image
 from graia.ariadne.model import Friend
@@ -22,37 +22,33 @@ from sagiri_bot.utils import get_setting
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("HelpYouSearch")
+channel.author("nullqwertyuiop")
+channel.description("自己查")
+
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def help_you_search_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await HelpYouSearchHandler.handle(app, message, strategy=FriendStrategy, friend=friend):
-        await FriendMessageSender(result.strategy).send(app, result.message, message, friend)
-
-
-@channel.use(ListenerSchema(listening_events=[TempMessage]))
-async def help_you_search_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await HelpYouSearchHandler.handle(app, message, strategy=TempStrategy, group=group,
-                                                   member=member):
-        await TempMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await HelpYouSearch.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def help_you_search_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await HelpYouSearchHandler.handle(app, message, strategy=, group=group,
-                                                   member=member):
+    if result := await HelpYouSearch.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class HelpYouSearchHandler(AbstractHandler):
-    __name__ = "HelpYouSearchHandler"
+class HelpYouSearch(AbstractHandler):
+    __name__ = "HelpYouSearch"
     __description__ = "帮你查查 Handler"
     __usage__ = "None"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, strategy: Strategy,
-                     group: Group = None, member: Member = None, friend: Friend = None):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if re.match("百度 (.*)", message.asDisplay()):
             if group and member:
                 if await get_setting(group.id, Setting.search_helper):
@@ -60,15 +56,15 @@ class HelpYouSearchHandler(AbstractHandler):
                     key = reg.search(message.asDisplay()).group(1)
                     key = urllib.parse.quote(key)
                     return MessageItem(MessageChain.create([
-                        await HelpYouSearchHandler.baidu(key, "link")]),
-                        QuoteSource(strategy()))
+                        await HelpYouSearch.baidu(key, "link")]),
+                        QuoteSource())
             elif friend:
                 reg = re.compile("百度 (.*)")
                 key = reg.search(message.asDisplay()).group(1)
                 key = urllib.parse.quote(key)
                 return MessageItem(MessageChain.create([
-                    await HelpYouSearchHandler.baidu(key, "link")]),
-                    QuoteSource(strategy()))
+                    await HelpYouSearch.baidu(key, "link")]),
+                    QuoteSource())
         else:
             return None
 

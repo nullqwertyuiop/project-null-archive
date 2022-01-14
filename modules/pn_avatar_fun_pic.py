@@ -23,6 +23,10 @@ from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("PNAvatarFunPic")
+channel.author("nullqwertyuiop")
+channel.description("头像处理")
+
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def pn_avatar_fun_pic_handler(app: Ariadne, message: MessageChain, friend: Friend):

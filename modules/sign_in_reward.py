@@ -8,6 +8,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
@@ -19,15 +20,19 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, SignInReward, Setting, UserCalledCount
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import get_setting, update_user_call_count_plus
-from modules.WalletHandler import WalletHandler
+from modules.wallet import wallet_handler
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("SignInReward")
+channel.author("nullqwertyuiop")
+channel.description("签到")
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def sign_in_reward_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await SignInRewardHandler.handle(app, message, group, member):
+    if result := await SignInRewardHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -43,7 +48,8 @@ class SignInRewardHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay() in ("签到", "簽到"):
             if not await get_setting(group.id, Setting.sign_in):
                 return None
@@ -71,7 +77,7 @@ class SignInRewardHandler(AbstractHandler):
                 ).where(SignInReward.qq == member.id, SignInReward.group_id == 0)
             )
             if fetch:
-                await WalletHandler.update(group, member, fetch[0][0], "签到模块迁移")
+                await wallet_handler.update(group, member, fetch[0][0], "签到模块迁移")
                 await orm.insert_or_update(
                     SignInReward,
                     [SignInReward.qq == member.id, SignInReward.group_id == group.id],
@@ -95,7 +101,7 @@ class SignInRewardHandler(AbstractHandler):
         else:
             last_date = int(fetch[0][0])
             streak = int(fetch[0][1])
-        wallet = await WalletHandler.get_balance(group, member)
+        wallet = await wallet_handler.get_balance(group, member)
         coins = wallet if wallet else 0
         current_date = int(time.localtime().tm_yday)
         extra = False
@@ -132,7 +138,7 @@ class SignInRewardHandler(AbstractHandler):
                      "coin": coins,
                      "last_date": current_date,
                      "streak": streak})
-                await WalletHandler.update(group, member, today_coins, "签到")
+                await wallet_handler.update(group, member, today_coins, "签到")
                 text = f"签到成功！\n获得硬币：{today_coins} 个，\n现有硬币：{coins} 个，\n签到时间：{current_time}，\n" \
                        f"连续签到：{streak} 天"
                 return text

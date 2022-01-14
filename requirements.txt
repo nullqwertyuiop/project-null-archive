@@ -1,0 +1,15 @@
+alembic
+bs4
+graia-ariadne
+graia-broadcast
+graia-saya
+graiax-silkcoder
+imageio
+jieba
+matplotlib
+moviepy
+wordcloud
+pillow
+qrcode
+sqlalchemy
+aiosqlite

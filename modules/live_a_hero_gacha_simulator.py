@@ -11,7 +11,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
-from graia.ariadne.model import MemberPerm
+from graia.ariadne.model import MemberPerm, Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
@@ -23,10 +23,16 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, Setting, LiveAHeroSimulator, UserCalledCount, GachaSimulatorRecord
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import update_user_call_count_plus, get_setting, user_permission_require
-from modules.WalletHandler import WalletHandler
+from modules.wallet import wallet_handler
 
 saya = Saya.current()
 channel = Channel.current()
+
+channel.name("LiveAHeroGachaSimulator")
+channel.author("nullqwertyuiop")
+channel.description("lah模拟抽卡")
+
+
 card_location = [(219, 367), (72, 500), (219, 500), (367, 500), (72, 632), (219, 632), (367, 632), (72, 763),
                  (219, 763), (367, 763)]
 frame_location = [(213, 361), (66, 494), (213, 494), (361, 494), (66, 626), (213, 626), (361, 626), (66, 757),
@@ -90,13 +96,19 @@ except FileNotFoundError as err:
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def template_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await LiveAHeroSimulatorHandler.handle(app, message, group, member):
+async def live_a_hero_gacha_simulator_handler(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await LiveAHeroGachaSimulator.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
+
+
+@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+async def live_a_hero_gacha_simulator_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await LiveAHeroGachaSimulator.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class LiveAHeroSimulatorHandler(AbstractHandler):
-    __name__ = "LiveAHeroSimulatorHandler"
+class LiveAHeroGachaSimulator(AbstractHandler):
+    __name__ = "LiveAHeroGachaSimulator"
     __description__ = "Live A Hero 抽卡模拟器"
     __usage__ = "lah抽卡"
     peach_mode = {}
@@ -104,96 +116,110 @@ class LiveAHeroSimulatorHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay() in (
                 "LAH模拟抽卡", "LAH 模拟抽卡", "lah模拟抽卡", "lah 模拟抽卡", "LAH模擬抽卡", "LAH 模擬抽卡", "lah模擬抽卡", "lah 模擬抽卡"
         ):
-            if not await get_setting(group.id, Setting.gacha_simulator):
-                return MessageItem(
-                    MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
-                    QuoteSource()
-                )
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                if not await get_setting(group.id, Setting.gacha_simulator):
+                    return MessageItem(
+                        MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
+                        QuoteSource()
+                    )
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(
-                MessageChain.create(await LiveAHeroSimulatorHandler.get_simulation(member, group, limited=False)),
+                MessageChain.create(await LiveAHeroGachaSimulator.get_simulation(member, group, limited=False)),
                 QuoteSource())
         elif message.asDisplay() in (
                 "LAH抽卡总结", "LAH 抽卡总结", "lah抽卡总结", "lah 抽卡总结", "LAH抽卡總結", "LAH 抽卡總結", "lah抽卡總結", "lah 抽卡總結"
         ):
-            if not await get_setting(group.id, Setting.gacha_simulator):
-                return MessageItem(
-                    MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
-                    QuoteSource()
-                )
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            return MessageItem(MessageChain.create(await LiveAHeroSimulatorHandler.get_summary(member, group)),
+            if member and group:
+                if not await get_setting(group.id, Setting.gacha_simulator):
+                    return MessageItem(
+                        MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
+                        QuoteSource()
+                    )
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            return MessageItem(MessageChain.create(await LiveAHeroGachaSimulator.get_summary(member, group)),
                                QuoteSource())
         elif message.asDisplay() in (
                 "LAH模拟限定抽卡", "LAH 模拟限定抽卡", "lah模拟限定抽卡", "lah 模拟限定抽卡", "LAH模擬限定抽卡", "LAH 模擬限定抽卡", "lah模擬限定抽卡",
                 "lah 模擬限定抽卡"):
-            if not await get_setting(group.id, Setting.gacha_simulator):
-                return MessageItem(
-                    MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
-                    QuoteSource()
-                )
-            # await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            # return MessageItem(MessageChain.create(await LiveAHeroSimulatorHandler.get_simulation(member, group, limited=True)),
+            if member and group:
+                if not await get_setting(group.id, Setting.gacha_simulator):
+                    return MessageItem(
+                        MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
+                        QuoteSource()
+                    )
+            #     await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            # return MessageItem(MessageChain.create(await LiveAHeroGachaSimulator.get_simulation(member, group, limited=True)),
             #                   QuoteSource())
             return MessageItem(MessageChain.create([Plain(text=f"限定卡池已关闭。")]), QuoteSource())
         elif message.asDisplay() in (
                 "LAH模拟UP抽卡", "LAH 模拟 UP 抽卡", "lah模拟up抽卡", "lah 模拟 up 抽卡", "LAH模擬UP抽卡", "LAH 模擬UP抽卡", "lah模擬up抽卡",
                 "lah 模擬 up 抽卡"):
-            if not await get_setting(group.id, Setting.gacha_simulator):
-                return MessageItem(
-                    MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
-                    QuoteSource()
-                )
-            # await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                if not await get_setting(group.id, Setting.gacha_simulator):
+                    return MessageItem(
+                        MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
+                        QuoteSource()
+                    )
+            #     await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             # return MessageItem(
-            #     MessageChain.create(await LiveAHeroSimulatorHandler.get_simulation(member, group, up=True)),
+            #     MessageChain.create(await LiveAHeroGachaSimulator.get_simulation(member, group, up=True)),
             #     QuoteSource()
             # )
             return MessageItem(MessageChain.create([Plain(text=f"UP 卡池已关闭。")]), QuoteSource())
         elif message.asDisplay().startswith("吃桃模式#"):
-            if member.permission == MemberPerm.Member and not await user_permission_require(group, member, 2):
-                return MessageItem(MessageChain.create([Plain(text=f"权限不足。")]), QuoteSource())
-            _, times = message.asDisplay().split("#")
-            try:
-                times = int(times)
-                if times < 0:
+            if member and group:
+                if member.permission == MemberPerm.Member and not await user_permission_require(group, member, 2):
+                    return MessageItem(MessageChain.create([Plain(text=f"权限不足。")]), QuoteSource())
+                _, times = message.asDisplay().split("#")
+                try:
+                    times = int(times)
+                    if times < 0:
+                        return MessageItem(MessageChain.create([Plain(text=f"参数有误。")]), QuoteSource())
+                except ValueError:
                     return MessageItem(MessageChain.create([Plain(text=f"参数有误。")]), QuoteSource())
-            except ValueError:
-                return MessageItem(MessageChain.create([Plain(text=f"参数有误。")]), QuoteSource())
-            LiveAHeroSimulatorHandler.peach_mode.update({group.id: times})
-            return MessageItem(MessageChain.create([Plain(text=f"抽卡吃桃模式已启用 {times} 次。")]), QuoteSource())
+                LiveAHeroGachaSimulator.peach_mode.update({group.id: times})
+                return MessageItem(MessageChain.create([Plain(text=f"抽卡吃桃模式已启用 {times} 次。")]), QuoteSource())
         else:
             return None
 
     @staticmethod
-    async def get_simulation(member: Member, group: Group, limited: bool = False, up: bool = False):
-        fetch = await orm.fetchall(
-            select(
-                Setting.lah_simulation_cost,
-                Setting.lah_simulation_limit
-            ).where(Setting.group_id == group.id))
+    async def get_simulation(member: Member = None, group: Group = None, limited: bool = False, up: bool = False):
+        fetch = None
+        if member and group:
+            fetch = await orm.fetchall(
+                select(
+                    Setting.lah_simulation_cost,
+                    Setting.lah_simulation_limit
+                ).where(Setting.group_id == group.id))
         amount = 1000 if not fetch else fetch[0][0]
+        amount = amount if member and group else 0
         limit = -1 if not fetch else fetch[0][1]
-        wallet = await WalletHandler.get_balance(group, member)
+        if member and group:
+            wallet = await wallet_handler.get_balance(group, member)
+        else:
+            wallet = 1000
         if limit < -1:
             return [Plain(text=f"抽取次数限制非法({limit} 次)。")]
-        fetch_user = await orm.fetchall(
-            select(
-                LiveAHeroSimulator.simulate_times,
-                LiveAHeroSimulator.last_date,
-                LiveAHeroSimulator.free_tokens,
-                LiveAHeroSimulator.three_stars_hero,
-                LiveAHeroSimulator.four_stars_hero,
-                LiveAHeroSimulator.five_stars_hero,
-                LiveAHeroSimulator.three_stars_sk,
-                LiveAHeroSimulator.four_stars_sk,
-                LiveAHeroSimulator.total_times
-            ).where(LiveAHeroSimulator.qq == member.id, LiveAHeroSimulator.group == group.id)
-        )
+        fetch_user = None
+        if member and group:
+            fetch_user = await orm.fetchall(
+                select(
+                    LiveAHeroSimulator.simulate_times,
+                    LiveAHeroSimulator.last_date,
+                    LiveAHeroSimulator.free_tokens,
+                    LiveAHeroSimulator.three_stars_hero,
+                    LiveAHeroSimulator.four_stars_hero,
+                    LiveAHeroSimulator.five_stars_hero,
+                    LiveAHeroSimulator.three_stars_sk,
+                    LiveAHeroSimulator.four_stars_sk,
+                    LiveAHeroSimulator.total_times
+                ).where(LiveAHeroSimulator.qq == member.id, LiveAHeroSimulator.group == group.id)
+            )
         simulate_times = 0 if not fetch_user else fetch_user[0][0]
         last_date = 0 if not fetch_user else fetch_user[0][1]
         free_tokens = 0 if not fetch_user else fetch_user[0][2]
@@ -204,15 +230,16 @@ class LiveAHeroSimulatorHandler(AbstractHandler):
         four_stars_sk = 0 if not fetch_user else fetch_user[0][7]
         total_times = 0 if not fetch_user else fetch_user[0][8]
         today = int(datetime.today().strftime('%Y%m%d'))
-        if last_date != today:
-            simulate_times = 0
-            await orm.insert_or_update(
-                LiveAHeroSimulator,
-                [LiveAHeroSimulator.qq == member.id, LiveAHeroSimulator.group == group.id],
-                {"qq": member.id,
-                 "group": group.id,
-                 "simulate_times": 0}
-            )
+        if member and group:
+            if last_date != today:
+                simulate_times = 0
+                await orm.insert_or_update(
+                    LiveAHeroSimulator,
+                    [LiveAHeroSimulator.qq == member.id, LiveAHeroSimulator.group == group.id],
+                    {"qq": member.id,
+                     "group": group.id,
+                     "simulate_times": 0}
+                )
         if simulate_times >= limit != -1:
             return [Plain(text=f"超出本群单日抽取限制 ({limit} 次)。")]
         else:
@@ -238,8 +265,8 @@ class LiveAHeroSimulatorHandler(AbstractHandler):
             frame_sk_3 = IMG.open("statics/lah/frame_sk_3.png").resize((106, 107), IMG.ANTIALIAS)
             draw = ImageDraw.Draw(result)
             gacha_record = {
-                "group_id": group.id,
-                "member_id": member.id,
+                "group_id": group.id if group else 0,
+                "member_id": member.id if member else 0,
                 "gacha": "lah",
                 "is_ten": True,
                 "time": datetime.now(),
@@ -256,12 +283,13 @@ class LiveAHeroSimulatorHandler(AbstractHandler):
             }
             for i_lah in range(0, 10):
                 luck = randrange(100) + 1
-                if group.id in LiveAHeroSimulatorHandler.peach_mode.keys():
-                    if LiveAHeroSimulatorHandler.peach_mode[group.id] > 0:
-                        peach_enabled = True
-                        luck = 0
-                        for peach_times in range(0, 10):
-                            luck = max(luck, randrange(100) + 1)
+                if member and group:
+                    if group.id in LiveAHeroGachaSimulator.peach_mode.keys():
+                        if LiveAHeroGachaSimulator.peach_mode[group.id] > 0:
+                            peach_enabled = True
+                            luck = 0
+                            for peach_times in range(0, 10):
+                                luck = max(luck, randrange(100) + 1)
                 if i_lah <= 8:
                     if luck <= 35:
                         pool = three_stars
@@ -463,34 +491,39 @@ class LiveAHeroSimulatorHandler(AbstractHandler):
                 result.paste(peach_watermark, (360, 300), peach_watermark)
             output = BytesIO()
             result.save(output, format='png')
-            await WalletHandler.charge(group, member, amount, "Live a Hero 模拟抽卡")
+            if member and group:
+                await wallet_handler.charge(group, member, amount, "Live a Hero 模拟抽卡")
             if not peach_enabled:
-                await orm.insert_or_update(
-                    LiveAHeroSimulator,
-                    [LiveAHeroSimulator.qq == member.id, LiveAHeroSimulator.group == group.id],
-                    {"qq": member.id,
-                     "group": group.id,
-                     "last_date": today,
-                     "simulate_times": simulate_times + 1,
-                     "free_tokens": (free_tokens - 1) if free_tokens - 1 > 0 else 0,
-                     "three_stars_hero": three_stars_hero,
-                     "four_stars_hero": four_stars_hero,
-                     "five_stars_hero": five_stars_hero,
-                     "three_stars_sk": three_stars_sk,
-                     "four_stars_sk": four_stars_sk,
-                     "total_times": total_times + 1}
-                )
-                await orm.add(
-                    GachaSimulatorRecord,
-                    gacha_record
-                )
+                if member and group:
+                    await orm.insert_or_update(
+                        LiveAHeroSimulator,
+                        [LiveAHeroSimulator.qq == member.id, LiveAHeroSimulator.group == group.id],
+                        {"qq": member.id,
+                         "group": group.id,
+                         "last_date": today,
+                         "simulate_times": simulate_times + 1,
+                         "free_tokens": (free_tokens - 1) if free_tokens - 1 > 0 else 0,
+                         "three_stars_hero": three_stars_hero,
+                         "four_stars_hero": four_stars_hero,
+                         "five_stars_hero": five_stars_hero,
+                         "three_stars_sk": three_stars_sk,
+                         "four_stars_sk": four_stars_sk,
+                         "total_times": total_times + 1}
+                    )
+                    await orm.add(
+                        GachaSimulatorRecord,
+                        gacha_record
+                    )
             else:
-                LiveAHeroSimulatorHandler.peach_mode[group.id] = LiveAHeroSimulatorHandler.peach_mode[group.id] - 1
+                if member and group:
+                    LiveAHeroGachaSimulator.peach_mode[group.id] = LiveAHeroGachaSimulator.peach_mode[group.id] - 1
             return_list = [Image(data_bytes=output.getvalue())]
             return return_list
 
     @staticmethod
-    async def get_summary(member: Member, group: Group):
+    async def get_summary(member: Member = None, group: Group = None):
+        if not member and group:
+            return [Plain(text=f"不支持查询。")]
         fetch_user = await orm.fetchall(
             select(
                 LiveAHeroSimulator.three_stars_hero,

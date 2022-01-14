@@ -8,12 +8,13 @@ from io import BytesIO
 from PIL import Image as IMG
 from random import randrange
 import aiohttp
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.message.element import Plain, Image
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from sqlalchemy import select
 
 from sagiri_bot.handler.handler import AbstractHandler
@@ -23,15 +24,25 @@ from sagiri_bot.orm.async_orm import orm, RandomHusband, Setting, UserCalledCoun
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.utils import update_user_call_count_plus, get_setting
-from modules.WalletHandler import WalletHandler
+from modules.wallet import wallet_handler
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("RandomHusband")
+channel.author("nullqwertyuiop")
+channel.description("随机老公")
+
+
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+async def template_handler(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await RandomHusbandHandler.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def template_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await RandomHusbandHandler.handle(app, message, group, member):
+    if result := await RandomHusbandHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -50,47 +61,54 @@ class RandomHusbandHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay() in ("随机老公", "隨機老公"):
-            if not await get_setting(group.id, Setting.random_husband):
-                return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
-                                   QuoteSource())
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                if not await get_setting(group.id, Setting.random_husband):
+                    return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
+                                       QuoteSource())
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "mixed")),
                                QuoteSource())
         elif message.asDisplay() in ("随机兽人老公", "隨機獸人老公"):
-            if not await get_setting(group.id, Setting.random_husband):
-                return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
-                                   QuoteSource())
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                if not await get_setting(group.id, Setting.random_husband):
+                    return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
+                                       QuoteSource())
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "furry")),
                                QuoteSource())
         elif message.asDisplay() in ("随机人类老公", "隨機人類老公"):
-            if not await get_setting(group.id, Setting.random_husband):
-                return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
-                                   QuoteSource())
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                if not await get_setting(group.id, Setting.random_husband):
+                    return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
+                                       QuoteSource())
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "human")),
                                QuoteSource())
         elif message.asDisplay() in ("十连老公", "十連老公"):
-            if not await get_setting(group.id, Setting.ten_husband):
-                return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
-                                   QuoteSource())
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                if not await get_setting(group.id, Setting.ten_husband):
+                    return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
+                                       QuoteSource())
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "mixed")),
                                QuoteSource())
         elif message.asDisplay() in ("十连兽人老公", "十連獸人老公"):
-            if not await get_setting(group.id, Setting.ten_husband):
-                return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
-                                   QuoteSource())
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                if not await get_setting(group.id, Setting.ten_husband):
+                    return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
+                                       QuoteSource())
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "furry")),
                                QuoteSource())
         elif message.asDisplay() in ("十连人类老公", "十連人類老公"):
-            if not await get_setting(group.id, Setting.ten_husband):
-                return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
-                                   QuoteSource())
-            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            if member and group:
+                if not await get_setting(group.id, Setting.ten_husband):
+                    return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
+                                       QuoteSource())
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "human")),
                                QuoteSource())
         elif re.match("\d+(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公", message.asDisplay()):
@@ -111,22 +129,22 @@ class RandomHusbandHandler(AbstractHandler):
                 pool = "mixed"
             return MessageItem(MessageChain.create(
                 await RandomHusbandHandler.get_custom(member, group, pool, times)),
-                               QuoteSource())
+                QuoteSource())
         else:
             return None
 
     @staticmethod
-    async def husband(member: Member, group: Group, pool: str):
+    async def husband(pool: str, member: Member = None, group: Group = None, friend: Friend = None):
         if randrange(101) <= 2:
             return [Plain(text="老公竟是你自己！"),
-                    Image(data_bytes=await RandomHusbandHandler.get_avatar(member.id, 100)),
+                    Image(data_bytes=await RandomHusbandHandler.get_avatar(member.id if member else friend.id, 100)),
                     Plain(text="开玩笑的，可以重新抽了。")]
         fetch = await orm.fetchall(
             select(
                 RandomHusband.last_date,
                 RandomHusband.last_file
-            ).where(RandomHusband.qq == member.id,
-                    RandomHusband.group == group.id,
+            ).where(RandomHusband.qq == member.id if member else friend.id,
+                    RandomHusband.group == group.id if group else 0,
                     RandomHusband.last_date == int(datetime.today().strftime('%Y%m%d'))))
         if fetch:
             try:
@@ -150,14 +168,15 @@ class RandomHusbandHandler(AbstractHandler):
             file_name = choice.split("/")[-2:]
             f_name = file_name[0] + "/" + file_name[1]
             husband = husband.resize((95 + randrange(11), 95 + randrange(11)))
-            await orm.insert_or_update(
-                RandomHusband,
-                [RandomHusband.qq == member.id, RandomHusband.group == group.id],
-                {"group": group.id,
-                 "qq": member.id,
-                 "last_date": int(datetime.today().strftime('%Y%m%d')),
-                 "last_file": f_name}
-            )
+            if member and group:
+                await orm.insert_or_update(
+                    RandomHusband,
+                    [RandomHusband.qq == member.id, RandomHusband.group == group.id],
+                    {"group": group.id if group else 0,
+                     "qq": member.id if member else friend.id,
+                     "last_date": int(datetime.today().strftime('%Y%m%d')),
+                     "last_file": f_name}
+                )
             output = BytesIO()
             husband.save(output, format='png')
             return [Image(data_bytes=output.getvalue())]
@@ -177,6 +196,8 @@ class RandomHusbandHandler(AbstractHandler):
 
     @staticmethod
     async def get_ten(member: Member, group: Group, pool: str):
+        if not member and not group:
+            return None
         fetch = await orm.fetchall(
             select(
                 Setting.ten_husband_cost,
@@ -212,7 +233,7 @@ class RandomHusbandHandler(AbstractHandler):
                 async with session.get(url=url) as resp:
                     img_content = await resp.read()
             member_avatar = IMG.open(BytesIO(img_content)).convert("RGB").resize((100, 100), IMG.ANTIALIAS)
-            wallet = await WalletHandler.get_balance(group, member)
+            wallet = await wallet_handler.get_balance(group, member)
             if wallet - amount < 0:
                 return [Plain(text=f"硬币少于 {amount}，无法抽取十连！")]
             else:
@@ -244,7 +265,7 @@ class RandomHusbandHandler(AbstractHandler):
                      "ten_husband_last_date": today,
                      "ten_husband_times": ten_husband_times + 1 - extra}
                 )
-                await WalletHandler.charge(group, member, amount, "十连老公")
+                await wallet_handler.charge(group, member, amount, "十连老公")
                 if limit == -1:
                     return [Image(data_bytes=output.getvalue()),
                             Plain(text=f"本次抽取耗费 {amount} 硬币，\n你现在一共有 {wallet - amount} 硬币。")]
@@ -296,7 +317,7 @@ class RandomHusbandHandler(AbstractHandler):
                 async with session.get(url=url) as resp:
                     img_content = await resp.read()
             member_avatar = IMG.open(BytesIO(img_content)).convert("RGB").resize((100, 100), IMG.ANTIALIAS)
-            wallet = await WalletHandler.get_balance(group, member)
+            wallet = await wallet_handler.get_balance(group, member)
             if wallet - amount < 0:
                 return [Plain(text=f"硬币少于 {amount}，无法抽取十连！")]
             else:
@@ -338,7 +359,7 @@ class RandomHusbandHandler(AbstractHandler):
                      "ten_husband_last_date": today,
                      "ten_husband_times": ten_husband_times + 1 - extra}
                 )
-                await WalletHandler.charge(group, member, amount, "十连老公")
+                await wallet_handler.charge(group, member, amount, "十连老公")
                 if limit == -1:
                     return [Image(data_bytes=output.getvalue()),
                             Plain(text=f"本次抽取耗费 {amount} 硬币，\n你现在一共有 {wallet - amount} 硬币。")]

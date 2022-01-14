@@ -5,32 +5,30 @@ from typing import Union
 
 from PIL import Image as IMG
 from graia.ariadne.app import Ariadne, Friend
-from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
+from graia.ariadne.event.message import Group, Member, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
+from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
-from sagiri_bot.message_sender.strategy import QuoteSource, FriendStrategy, StrategyType
-from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.message_sender.strategy import QuoteSource
 
 saya = Saya.current()
 channel = Channel.current()
 
-
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def image_to_url_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await ImageToURLHandler.handle(app, message, group=group, member=member, strategy=):
-        await MessageSender(result.strategy).send(app, result.message, message, group, member)
+channel.name("ImageToURL")
+channel.author("nullqwertyuiop")
+channel.description("图床")
 
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def image_to_url_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await ImageToURLHandler.handle(app, message, friend=friend, strategy=FriendStrategy()):
-        await FriendMessageSender(result.strategy).send(app, result.message, message, friend)
+    if result := await ImageToURLHandler.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
 class ImageToURLHandler(AbstractHandler):
@@ -42,40 +40,40 @@ class ImageToURLHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, strategy: StrategyType, group: Group = None,
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
         if friend:
             if message.asDisplay() in ("开启图片转链接", "开启图床"):
                 if friend.id in ImageToURLHandler.func_switch.keys():
                     if ImageToURLHandler.func_switch[friend.id]['status']:
                         return MessageItem(MessageChain.create([Plain(text="已开启图床，无需重复开启。")]),
-                                           QuoteSource(FriendStrategy()))
+                                           QuoteSource())
                     else:
                         ImageToURLHandler.func_switch[friend.id]['status'] = True
                         return MessageItem(MessageChain.create([Plain(text="已开启图床。")]),
-                                           QuoteSource(FriendStrategy()))
+                                           QuoteSource())
                 ImageToURLHandler.func_switch.update(
                     {friend.id:
                         {"status": True}}
                 )
                 return MessageItem(MessageChain.create([Plain(text="已开启图床。")]),
-                                   QuoteSource(FriendStrategy()))
+                                   QuoteSource())
             elif message.asDisplay() in ("关闭图片转链接", "关闭图床"):
                 if friend.id in ImageToURLHandler.func_switch.keys():
                     if ImageToURLHandler.func_switch[friend.id]['status']:
                         ImageToURLHandler.func_switch[friend.id]['status'] = False
                         return MessageItem(MessageChain.create([Plain(text="已关闭图床。")]),
-                                           QuoteSource(FriendStrategy()))
+                                           QuoteSource())
                     else:
                         return MessageItem(MessageChain.create([Plain(text="已关闭图床，无需重复关闭。")]),
-                                           QuoteSource(FriendStrategy()))
-                return MessageItem(MessageChain.create([Plain(text="未开启图床。")]), QuoteSource(FriendStrategy()))
+                                           QuoteSource())
+                return MessageItem(MessageChain.create([Plain(text="未开启图床。")]), QuoteSource())
             if message.has(Image):
                 if friend.id in ImageToURLHandler.func_switch:
                     if ImageToURLHandler.func_switch[friend.id]['status']:
                         return MessageItem(MessageChain.create(
                             await ImageToURLHandler.get_image(message.get(Image), friend)
-                        ), QuoteSource(strategy))
+                        ), QuoteSource())
         else:
             return None
 
