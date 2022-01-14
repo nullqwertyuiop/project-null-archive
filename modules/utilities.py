@@ -13,14 +13,14 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Core.AppCore import AppCore
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource, Normal
-from SAGIRIBOT.ORM.AsyncORM import orm, Setting, UserPermission
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import user_permission_require, get_config
+from sagiri_bot.core.app_core import AppCore
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource, Normal
+from sagiri_bot.orm.async_orm import orm, Setting, UserPermission
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import user_permission_require, get_config
 
 saya = Saya.current()
 channel = Channel.current()
@@ -29,7 +29,7 @@ channel = Channel.current()
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def utilities_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await UtilitiesHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class UtilitiesHandler(AbstractHandler):
@@ -178,105 +178,105 @@ class UtilitiesHandler(AbstractHandler):
             if len(message.asDisplay().split("#")) == 2:
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.get_permission_member(member, group))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             if len(message.asDisplay().split("#")) == 3:
                 _, __, member_id = message.asDisplay().split("#")
                 try:
                     member_id = int(member_id)
                     return MessageItem(MessageChain.create([
                         Plain(text=await UtilitiesHandler.get_permission_id(member_id, group, app))
-                    ]), QuoteSource(GroupStrategy()))
+                    ]), QuoteSource())
                 except:
                     return MessageItem(MessageChain.create([
                         Plain(text=f"Integer expected, got {member_id}")
-                    ]), QuoteSource(GroupStrategy()))
+                    ]), QuoteSource())
         elif message.asDisplay().startswith("base64#"):
             if message.asDisplay().startswith("base64#encode#") or message.asDisplay().startswith("base64#编码#"):
                 _, __, encode = message.asDisplay().split("#", maxsplit=2)
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.base64_encode(encode))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             elif message.asDisplay().startswith("base64#decode#") or message.asDisplay().startswith("base64#解码#"):
                 _, __, decode = message.asDisplay().split("#", maxsplit=2)
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.base64_decode(decode))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay().startswith("更改搜图消耗#"):
             _, cost = message.asDisplay().split("#", maxsplit=1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_img_search_cost(group, cost))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay().startswith("更改十连消耗#"):
             _, cost = message.asDisplay().split("#", maxsplit=1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_ten_husband_cost(group, cost))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay().startswith("更改十连次数#"):
             _, frequency = message.asDisplay().split("#", maxsplit=1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_ten_husband_frequency_limit(group, frequency))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay().replace(" ", "").startswith("更改LAH模拟抽卡消耗#"):
             _, cost = message.asDisplay().split("#", maxsplit=1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_lah_simulation_cost(group, cost))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay().replace(" ", "").startswith("更改LAH模拟抽卡次数#"):
             _, frequency = message.asDisplay().split("#", maxsplit=1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_lah_simulation_frequency_limit(group, frequency))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay().replace(" ", "").startswith("更改闲聊自信阈值#"):
             _, confidence = message.asDisplay().split("#", maxsplit=1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_chat_confidence(group, confidence))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay().replace(" ", "").startswith("更改搜图相似度阈值#"):
             _, similarity = message.asDisplay().split("#", maxsplit=1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_img_search_similarity(group, similarity))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay().replace(" ", "").startswith("更改塔罗牌抽取次数#"):
             _, frequency = message.asDisplay().split("#", maxsplit=1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_tarot_limit(group, frequency))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif re.match("(不许|不可以|可以)帮忙百度", message.asDisplay()):
             reg = re.compile("(不许|不可以|可以)帮忙百度")
             match = reg.search(message.asDisplay()).group(1)
@@ -284,22 +284,22 @@ class UtilitiesHandler(AbstractHandler):
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_search_helper(group, value))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif re.match("更改嗓音#(.*)", message.asDisplay()):
             reg = re.compile("更改嗓音#(.*)")
             voice = reg.search(message.asDisplay()).group(1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([
                     Plain(text=await UtilitiesHandler.set_voice(group, voice))
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif re.match("打开(.*)开关", message.asDisplay()):
             reg = re.compile("打开(.*)开关")
             setting = reg.search(message.asDisplay()).group(1)
@@ -308,7 +308,7 @@ class UtilitiesHandler(AbstractHandler):
                 if "valid" in item.keys():
                     return MessageItem(MessageChain.create([
                         Plain(text=f"该设置项非布尔值。")
-                    ]), QuoteSource(GroupStrategy()))
+                    ]), QuoteSource())
                 index = item["index"]
                 permission = item["permission"]
                 if (member.permission == MemberPerm.Administrator and permission["admin"]) or (
@@ -322,9 +322,9 @@ class UtilitiesHandler(AbstractHandler):
                          index: True}
                     )
                     return MessageItem(MessageChain.create([Plain(text=f"已打开{setting}。")]),
-                                       QuoteSource(GroupStrategy()))
+                                       QuoteSource())
                 else:
-                    return MessageItem(MessageChain.create([Plain(text=f"权限不足。")]), QuoteSource(GroupStrategy()))
+                    return MessageItem(MessageChain.create([Plain(text=f"权限不足。")]), QuoteSource())
         elif re.match("关闭(.*)开关", message.asDisplay()):
             reg = re.compile("关闭(.*)开关")
             setting = reg.search(message.asDisplay()).group(1)
@@ -333,7 +333,7 @@ class UtilitiesHandler(AbstractHandler):
                 if "valid" in item.keys():
                     return MessageItem(MessageChain.create([
                         Plain(text=f"该设置项非布尔值。")
-                    ]), QuoteSource(GroupStrategy()))
+                    ]), QuoteSource())
                 index = item["index"]
                 permission = item["permission"]
                 if (member.permission == MemberPerm.Administrator and permission["admin"]) or (
@@ -347,12 +347,12 @@ class UtilitiesHandler(AbstractHandler):
                          index: False}
                     )
                     return MessageItem(MessageChain.create([Plain(text=f"已关闭{setting}。")]),
-                                       QuoteSource(GroupStrategy()))
+                                       QuoteSource())
                 else:
-                    return MessageItem(MessageChain.create([Plain(text=f"权限不足。")]), QuoteSource(GroupStrategy()))
+                    return MessageItem(MessageChain.create([Plain(text=f"权限不足。")]), QuoteSource())
         elif message.asDisplay() == "/quit":
             if not (await user_permission_require(group, member, 3) or member.permission != MemberPerm.Member):
-                return MessageItem(MessageChain.create([Plain(text=f"权限不足，需要管理员或 3 级以上权限。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text=f"权限不足，需要管理员或 3 级以上权限。")]), QuoteSource())
             inc = InterruptControl(AppCore.get_core_instance().get_bcc())
             await app.sendGroupMessage(
                 group.id, MessageChain.create([
@@ -391,9 +391,9 @@ class UtilitiesHandler(AbstractHandler):
                 )
                 return None
             elif status_code == 1:
-                return MessageItem(MessageChain.create([Plain(text=f"已撤销请求。")]), Normal(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text=f"已撤销请求。")]), Normal())
             elif status_code == 2:
-                return MessageItem(MessageChain.create([Plain(text=f"非预期回复。")]), Normal(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text=f"非预期回复。")]), Normal())
         elif re.match("不?信任本群", message.asDisplay()):
             if await user_permission_require(group, member, 4):
                 trust = False if message.asDisplay().startswith("不") else True
@@ -404,11 +404,11 @@ class UtilitiesHandler(AbstractHandler):
                      "trusted": trust})
                 return MessageItem(MessageChain.create([
                     Plain(text=f"已{'信任' if trust else '不信任'}本群")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         else:
             return None
 

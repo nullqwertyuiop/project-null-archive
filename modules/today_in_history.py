@@ -13,12 +13,12 @@ from graia.ariadne.message.element import Plain
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource, Normal
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import MessageChainUtils
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource, Normal
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import MessageChainUtils
 
 saya = Saya.current()
 channel = Channel.current()
@@ -27,7 +27,7 @@ channel = Channel.current()
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def jue_jue_zi_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await TodayInHistoryHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class TodayInHistoryHandler(AbstractHandler):
@@ -44,24 +44,24 @@ class TodayInHistoryHandler(AbstractHandler):
             if len(msg) == 1:
                 return MessageItem(MessageChain.create(
                     await TodayInHistoryHandler.get_today()
-                ), Normal(GroupStrategy()))
+                ), Normal())
             elif len(msg) == 2:
                 try:
                     page = int(msg[1])
                     if page == 0:
                         text_msg = MessageChain.create(await TodayInHistoryHandler.get_today(page=0))
                         return MessageItem(await MessageChainUtils.messagechain_to_img(text_msg),
-                                           Normal(GroupStrategy()))
+                                           Normal())
                     return MessageItem(MessageChain.create(
                         await TodayInHistoryHandler.get_today(page=page)
-                    ), Normal(GroupStrategy()))
+                    ), Normal())
                 except ValueError:
                     event_type = str(msg[1])
                     if event_type not in ("大事记", "出生", "逝世"):
-                        return MessageItem(MessageChain.create([Plain(text=f"类型非法。")]), QuoteSource(GroupStrategy()))
+                        return MessageItem(MessageChain.create([Plain(text=f"类型非法。")]), QuoteSource())
                     return MessageItem(MessageChain.create(
                         await TodayInHistoryHandler.get_today(event_type=event_type)
-                    ), Normal(GroupStrategy()))
+                    ), Normal())
             elif len(msg) == 3:
                 try:
                     event_type = str(msg[1])
@@ -69,14 +69,14 @@ class TodayInHistoryHandler(AbstractHandler):
                     if page == 0:
                         text_msg = MessageChain.create(await TodayInHistoryHandler.get_today(page=0))
                         return MessageItem(await MessageChainUtils.messagechain_to_img(text_msg),
-                                           Normal(GroupStrategy()))
+                                           Normal())
                     if event_type not in ("大事记", "出生", "逝世"):
-                        return MessageItem(MessageChain.create([Plain(text=f"类型非法。")]), QuoteSource(GroupStrategy()))
+                        return MessageItem(MessageChain.create([Plain(text=f"类型非法。")]), QuoteSource())
                     return MessageItem(MessageChain.create(
                         await TodayInHistoryHandler.get_today(page=page, event_type=event_type)
-                    ), Normal(GroupStrategy()))
+                    ), Normal())
                 except ValueError:
-                    return MessageItem(MessageChain.create([Plain(text=f"页数非法。")]), QuoteSource(GroupStrategy()))
+                    return MessageItem(MessageChain.create([Plain(text=f"页数非法。")]), QuoteSource())
         else:
             return None
 

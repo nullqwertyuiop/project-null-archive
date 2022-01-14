@@ -14,13 +14,13 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import orm, MigrateProstitute, Setting, Prostitute
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import get_setting
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, MigrateProstitute, Setting, Prostitute
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import get_setting
 from modules.WalletHandler import WalletHandler
 
 saya = Saya.current()
@@ -79,7 +79,7 @@ arrest_text = {"none": [
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def speak_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await ImprovedSignInHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class ImprovedSignInHandler(AbstractHandler):
@@ -97,7 +97,7 @@ class ImprovedSignInHandler(AbstractHandler):
             return MessageItem(MessageChain.create([
                 # Image(data_bytes=await ImprovedSignInHandler.get_avatar(member.id)),
                 Plain(text=await ImprovedSignInHandler.prostitute_legacy(group, member))]),
-                QuoteSource(GroupStrategy()))
+                QuoteSource())
         elif message.asDisplay() == "站街排行榜":
             return await ImprovedSignInHandler.prostitute_toplist(app, group, member)
         # elif message.asDisplay() in ("卖铺测试", "站街测试", "开张测试"):
@@ -105,19 +105,19 @@ class ImprovedSignInHandler(AbstractHandler):
         #         return None
         #     if not await user_permission_require(group, member, 4):
         #         return MessageItem(MessageChain.create([Plain(text="权限不足，无法进行该测试，可申请加入测试计划。")]),
-        #                            QuoteSource(GroupStrategy()))
+        #                            QuoteSource())
         #     result = []
         #     # if migrate_result := await ImprovedSignInHandler.migrate_check(member):
         #     #     result.extend(migrate_result)
         #     result.extend(await ImprovedSignInHandler.prostitute(member, group))
-        #     return MessageItem(MessageChain.create(result), QuoteSource(GroupStrategy()))
+        #     return MessageItem(MessageChain.create(result), QuoteSource())
         # elif re.match("更改物种#.*#.*", message.asDisplay() or re.match("更改物種#.*#.*", message.asDisplay())):
         #     if not await get_setting(group.id, Setting.prostitute):
         #         return None
         #     try:
         #         _, subject, race = message.asDisplay().split("#")
         #         result = [await ImprovedSignInHandler.update_race(member, group, subject, race)]
-        #         return MessageItem(MessageChain.create(result), QuoteSource(GroupStrategy()))
+        #         return MessageItem(MessageChain.create(result), QuoteSource())
         #     except AccountMuted:
         #         logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
         #         return None
@@ -500,7 +500,7 @@ class ImprovedSignInHandler(AbstractHandler):
                 if fetch[index][0] == 0:
                     continue
                 toplist.append(Plain(text=f"\n{index + 1}. {user}：{fetch[index][0]} 人"))
-            return MessageItem(MessageChain.create(toplist), QuoteSource(GroupStrategy()))
+            return MessageItem(MessageChain.create(toplist), QuoteSource())
 
     @staticmethod
     async def get_avatar(uin: int):

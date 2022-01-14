@@ -11,11 +11,11 @@ from graia.ariadne.message.element import Plain, Image
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender, FriendMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource, FriendStrategy, StrategyType
-from SAGIRIBOT.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource, FriendStrategy, StrategyType
+from sagiri_bot.decorators import switch, blacklist
 
 saya = Saya.current()
 channel = Channel.current()
@@ -23,8 +23,8 @@ channel = Channel.current()
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def image_to_url_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await ImageToURLHandler.handle(app, message, group=group, member=member, strategy=GroupStrategy()):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await ImageToURLHandler.handle(app, message, group=group, member=member, strategy=):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))

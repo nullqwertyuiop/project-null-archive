@@ -1,49 +1,67 @@
 import re
 import random
 
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from SAGIRIBOT.utils import get_setting
-from SAGIRIBOT.ORM.AsyncORM import Setting
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
+from sagiri_bot.utils import get_setting
+from sagiri_bot.orm.async_orm import Setting
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("AdvancedDice")
+channel.author("nullqwertyuiop")
+channel.description("高级(不)的骰子")
+
+
+@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+async def dice_handler(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await AdvancedDice.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def dice_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await AdvancedDiceHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await AdvancedDice.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class AdvancedDiceHandler(AbstractHandler):
-    __name__ = "AdvancedDiceHandler"
+class AdvancedDice(AbstractHandler):
+    __name__ = "AdvancedDice"
     __description__ = "投骰子"
     __usage__ = "None"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if re.match(r"(\.|。)ra(\D+)(\d+)", message.asDisplay()):
             print(message.asDisplay())
-            if not await get_setting(group.id, Setting.dice):
-                return MessageItem(MessageChain.create([Plain(text="骰子功能尚未开启。")]), QuoteSource(GroupStrategy()))
+            if member and group:
+                if not await get_setting(group.id, Setting.dice):
+                    return MessageItem(MessageChain.create([Plain(text="骰子功能尚未开启。")]), QuoteSource())
+                else:
+                    return MessageItem(MessageChain.create([
+                        Plain(text=f"[{member.name}]进行的 "),
+                        Plain(text=await AdvancedDice.ra(group, message.asDisplay()))
+                    ]), QuoteSource())
             else:
                 return MessageItem(MessageChain.create([
-                    Plain(text=f"[{member.name}]进行的 "),
-                    Plain(text=await AdvancedDiceHandler.ra(group, message.asDisplay()))
-                ]), QuoteSource(GroupStrategy()))
+                    Plain(text=f"[{friend.nickname}]进行的 "),
+                    Plain(text=await AdvancedDice.ra(group, message.asDisplay()))
+                ]), QuoteSource())
 
     @staticmethod
     async def ra(group: Group, message: str):

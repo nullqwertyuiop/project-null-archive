@@ -4,44 +4,43 @@ import os
 from typing import Union
 
 from graia.ariadne.app import Ariadne, Friend
-from graia.ariadne.event.message import Group, Member, FriendMessage, TempMessage, GroupMessage
+from graia.ariadne.event.message import Group, Member, FriendMessage, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import FriendMessageSender, TempMessageSender, GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import FriendStrategy, TempStrategy, \
-    StrategyType, QuoteSource, GroupStrategy
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import get_config
+from sagiri_bot.core.app_core import AppCore
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.decorators import switch, blacklist
 
 saya = Saya.current()
 channel = Channel.current()
+core: AppCore = AppCore.get_core_instance()
+config = core.get_config()
 
-
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def command_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await CommandHandler.handle(app, message, group=group, member=member, strategy=GroupStrategy()):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+channel.name("Command")
+channel.author("nullqwertyuiop")
+channel.description("瞎**乱写的指令功能")
 
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def command_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await CommandHandler.handle(app, message, friend=friend, strategy=FriendStrategy()):
-        await FriendMessageSender(result.strategy).send(app, result.message, message, friend)
+    if result := await Command.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[TempMessage]))
+@channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def command_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await CommandHandler.handle(app, message, group=group, member=member, strategy=TempStrategy()):
-        await TempMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await Command.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class CommandHandler(AbstractHandler):
-    __name__ = "CommandHandler"
+class Command(AbstractHandler):
+    __name__ = "Command"
     __description__ = "测试 Handler"
     __usage__ = "None"
     command_list = ["/contact", "/feedback", "/help"]
@@ -49,32 +48,29 @@ class CommandHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, strategy: StrategyType, group: Group = None,
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
         if message.asDisplay().startswith("/"):
             cord = {
-                "/contact": CommandHandler.contact,
-                "/feedback": CommandHandler.contact,
-                "/help": CommandHandler.help,
-                "/execute": CommandHandler.execute
+                "/contact": Command.contact,
+                "/feedback": Command.contact,
+                "/help": Command.help
             }
             try:
                 command, content = message.asDisplay().split(" ", maxsplit=1)
             except ValueError:
                 command = message.asDisplay()
                 content = None
-            if command not in CommandHandler.command_list:
+            if command not in Command.command_list:
                 return None
             return MessageItem(MessageChain.create(
-                await cord[command](app, message, strategy, group=group, member=member, friend=friend, content=content)
-            ), QuoteSource(strategy))
+                await cord[command](app, message, group=group, member=member, friend=friend, content=content)
+            ), QuoteSource())
 
     @staticmethod
-    async def contact(app: Ariadne, message: MessageChain, strategy: StrategyType,
-                      group: Union[Group, int] = None, member: Union[Member, int] = None,
-                      friend: Union[Friend, int] = None, content: Union[str, None] = None) -> Union[list, None]:
-        if type(strategy) not in [GroupStrategy, TempStrategy, FriendStrategy]:
-            return None
+    async def contact(app: Ariadne, message: MessageChain, group: Union[Group, int] = None,
+                      member: Union[Member, int] = None, friend: Union[Friend, int] = None,
+                      content: Union[str, None] = None) -> Union[list, None]:
         if not content:
             return [
                 Plain(text=f"未填写内容。")
@@ -82,20 +78,17 @@ class CommandHandler(AbstractHandler):
         try:
             prefix = None
             strategy_used = "BUG"
-            if type(strategy) == FriendStrategy and friend.id != get_config("HostQQ"):
+            if friend and friend.id != config.host_qq:
                 prefix = f"机器人收到来自好友 <{friend.id}> 的消息："
                 strategy_used = "好友"
-            elif type(strategy) == TempStrategy and member.id != get_config("HostQQ"):
-                prefix = f"机器人收到来自群 <{group.id}> 中成员 <{member.id}> 的临时消息："
-                strategy_used = "临时"
-            elif type(strategy) == GroupStrategy and member.id != get_config("HostQQ"):
+            elif member and group and member.id != config.host_qq:
                 prefix = f"机器人收到来自群 <{group.id}> 中成员 <{member.id}> 的消息："
                 strategy_used = "群聊"
             forward = [Plain(text=prefix), Plain(text=f"\n{content}")]
             for images in message[Image]:
                 forward.append(Plain(text=f"\n{images.url}"))
             await app.sendFriendMessage(
-                get_config("HostQQ"), MessageChain.create(forward)
+                config.host_qq, MessageChain.create(forward)
             )
             forward_status = True
         except:
@@ -107,22 +100,19 @@ class CommandHandler(AbstractHandler):
         ]
 
     @staticmethod
-    async def help(app: Ariadne, message: MessageChain, strategy: StrategyType,
-                   group: Union[Group, int] = None, member: Union[Member, int] = None,
-                   friend: Union[Friend, int] = None, content: Union[str, None] = None) -> Union[list, None]:
-        if type(strategy) not in [GroupStrategy, TempStrategy, FriendStrategy]:
-            return None
+    async def help(app: Ariadne, message: MessageChain, group: Union[Group, int] = None,
+                   member: Union[Member, int] = None, friend: Union[Friend, int] = None,
+                   content: Union[str, None] = None) -> Union[list, None]:
         with open(f"{os.getcwd()}/statics/manual.json", "r", encoding="utf-8") as r:
             manual = json.loads(r.read())
-        if type(strategy) == GroupStrategy:
+        if member and group:
             commands = manual["available_command"]["group"]
             env = "群聊"
-        elif type(strategy) == TempStrategy:
-            commands = manual["available_command"]["temp"]
-            env = "临时"
-        else:
+        elif friend:
             commands = manual["available_command"]["friend"]
             env = "好友"
+        else:
+            return None
         resp = [Plain(text="[帮助]")]
         if not content:
             resp.append(Plain(text=f"\n{env}环境下可用的指令有："))
@@ -190,17 +180,3 @@ class CommandHandler(AbstractHandler):
             except KeyError:
                 resp.append(Plain(text=f'\n未查找到指令 "{content}"，请检查您的输入。'))
         return resp
-
-    @staticmethod
-    async def execute(app: Ariadne, message: MessageChain, strategy: StrategyType,
-                      group: Union[Group, int] = None, member: Union[Member, int] = None,
-                      friend: Union[Friend, int] = None, content: Union[str, None] = None) -> Union[list, None]:
-        if type(strategy) not in [GroupStrategy, TempStrategy, FriendStrategy]:
-            return None
-        pass
-
-    @staticmethod
-    async def list(app: Ariadne, message: MessageChain, strategy: StrategyType,
-                   group: Union[Group, int] = None, member: Union[Member, int] = None,
-                   friend: Union[Friend, int] = None, content: Union[str, None] = None) -> Union[list, None]:
-        pass

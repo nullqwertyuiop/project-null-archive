@@ -8,12 +8,12 @@ from graia.ariadne.message.element import Plain
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import orm, Setting
-from SAGIRIBOT.utils import get_setting, user_permission_require
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, Setting
+from sagiri_bot.utils import get_setting, user_permission_require
 
 saya = Saya.current()
 channel = Channel.current()
@@ -22,7 +22,7 @@ channel = Channel.current()
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def speak_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await NoticeHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class NoticeHandler(AbstractHandler):
@@ -38,13 +38,13 @@ class NoticeHandler(AbstractHandler):
                     return await NoticeHandler.notice(app, message)
                 else:
                     return MessageItem(MessageChain.create([
-                        Plain(text="权限不足，需要 4 级权限才能发送公告。")]), QuoteSource(GroupStrategy()))
+                        Plain(text="权限不足，需要 4 级权限才能发送公告。")]), QuoteSource())
         elif message.asDisplay() == "#关闭公告":
             return MessageItem(MessageChain.create([
-                Plain(text=await NoticeHandler.disable(member, group))]), QuoteSource(GroupStrategy()))
+                Plain(text=await NoticeHandler.disable(member, group))]), QuoteSource())
         elif message.asDisplay() == "#开启公告":
             return MessageItem(MessageChain.create([
-                Plain(text=await NoticeHandler.enable(member, group))]), QuoteSource(GroupStrategy()))
+                Plain(text=await NoticeHandler.enable(member, group))]), QuoteSource())
 
     @staticmethod
     async def notice(app: Ariadne, message: MessageChain):

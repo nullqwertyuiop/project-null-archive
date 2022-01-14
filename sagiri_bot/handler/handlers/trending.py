@@ -1,56 +1,77 @@
 import random
 import aiohttp
 from bs4 import BeautifulSoup
+from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
 
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.MessageSender.Strategy import Normal
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.decorators import frequency_limit_require_weight_free
-from SAGIRIBOT.utils import update_user_call_count_plus1, UserCalledCount
+from sagiri_bot.core.app_core import AppCore
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.message_sender.strategy import Normal
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.decorators import frequency_limit_require_weight_free
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
 
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("Trending")
+channel.author("SAGIRI-kawaii")
+channel.description(
+    "一个获取热搜的插件\n"
+    "在群中发送 `微博热搜` 即可查看微博热搜\n"
+    "在群中发送 `知乎热搜` 即可查看知乎热搜\n"
+    "在群中发送 `github热搜` 即可查看github热搜"
+)
+
+core = AppCore.get_core_instance()
+config = core.get_config()
+proxy = config.proxy if config.proxy != "proxy" else ''
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def trending_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await TrendingHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+async def trending(app: Ariadne, message: MessageChain, friend: Friend):
+    if result := await Trending.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-class TrendingHandler(AbstractHandler):
+@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+async def trending(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await Trending.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
+
+
+class Trending(AbstractHandler):
     """
     热搜Handler
     """
-    __name__ = "TrendingHandler"
-    __description__ = "一个获取热搜的Handler"
+    __name__ = "Trending"
+    __description__ = "一个获取热搜的插件"
     __usage__ = "在群中发送 `微博热搜` 即可查看微博热搜\n在群中发送 `知乎热搜` 即可查看知乎热搜\n在群中发送 `github热搜` 即可查看github热搜"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         message_text = message.asDisplay()
         if message_text == "微博热搜":
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            return await TrendingHandler.get_weibo_trending(group, member)
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            return await Trending.get_weibo_trending(group, member)
         elif message_text == "知乎热搜":
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            return await TrendingHandler.get_zhihu_trending(group, member)
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            return await Trending.get_zhihu_trending(group, member)
         elif message_text == "github热搜":
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            return await TrendingHandler.get_github_trending(group, member)
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            return await Trending.get_github_trending(group, member)
         else:
             return None
 
@@ -91,15 +112,16 @@ class TrendingHandler(AbstractHandler):
     async def get_github_trending(group: Group, member: Member) -> MessageItem:
         url = "https://github.com/trending"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/87.0.4280.141 Safari/537.36 "
         }
         async with aiohttp.ClientSession() as session:
-            async with session.get(url=url, headers=headers) as resp:
+            async with session.get(url=url, headers=headers, proxy=proxy) as resp:
                 html = await resp.read()
         soup = BeautifulSoup(html, "html.parser")
         articles = soup.find_all("article", {"class": "Box-row"})
 
-        text_list = [f"随机数:{random.randint(0, 10000)}", "\ngithub实时热榜:\n"]
+        text_list = [f"随机数:{random.randint(0, 10000)}", "\nGitHub实时热榜:\n"]
         index = 0
         for i in articles:
             try:
@@ -107,7 +129,7 @@ class TrendingHandler(AbstractHandler):
                 title = i.find('h1').get_text().replace('\n', '').replace(' ', '').replace('\\', ' \\ ')
                 text_list.append(f"\n{index}. {title}\n")
                 text_list.append(f"\n    {i.find('p').get_text().strip()}\n")
-            except Exception:
+            except:
                 pass
 
         text = "".join(text_list).replace("#", "")

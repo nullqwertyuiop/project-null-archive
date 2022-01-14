@@ -4,45 +4,42 @@ import random
 import aiohttp
 import requests
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage, TempMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender import Strategy
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender, FriendMessageSender, TempMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource, FriendStrategy, TempStrategy
-from SAGIRIBOT.ORM.AsyncORM import UserCalledCount
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import update_user_call_count_plus1
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import UserCalledCount
+from sagiri_bot.utils import update_user_call_count_plus
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("GarbageTranslation")
+channel.author("nullqwertyuiop")
+channel.description("翻译、瞎翻译")
+
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def garbage_translation_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await GarbageTranslationHandler.handle(app, message, strategy=FriendStrategy, friend=friend):
-        await FriendMessageSender(result.strategy).send(app, result.message, message, friend)
-
-
-@channel.use(ListenerSchema(listening_events=[TempMessage]))
-async def garbage_translation_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await GarbageTranslationHandler.handle(app, message, strategy=TempStrategy, group=group, member=member):
-        await TempMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await GarbageTranslation.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def garbage_translation_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await GarbageTranslationHandler.handle(app, message, strategy=GroupStrategy, group=group, member=member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await GarbageTranslation.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class GarbageTranslationHandler(AbstractHandler):
+class GarbageTranslation(AbstractHandler):
     __name__ = "GarbageTranslation"
     __description__ = "瞎翻译模块"
     __usage__ = "None"
@@ -56,24 +53,24 @@ class GarbageTranslationHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, strategy: Strategy,
-                     group: Group = None, member: Member = None, friend: Friend = None):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay().startswith("瞎翻译#"):
             text = message.asDisplay().split("#", maxsplit=1)[1]
             if member and group:
-                await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-            return MessageItem(MessageChain.create([Plain(text=await GarbageTranslationHandler.get_translation(text))]),
-                               QuoteSource(strategy()))
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+            return MessageItem(MessageChain.create([Plain(text=await GarbageTranslation.get_translation(text))]),
+                               QuoteSource())
         elif message.asDisplay() == "更新瞎翻译 Cookies":
-            return MessageItem(MessageChain.create([Plain(text=await GarbageTranslationHandler.update_cookie())]),
-                               QuoteSource(strategy()))
+            return MessageItem(MessageChain.create([Plain(text=await GarbageTranslation.update_cookie())]),
+                               QuoteSource())
         elif message.asDisplay().startswith("翻译#"):
             text = message.asDisplay().split("#", maxsplit=1)[1]
             if member and group:
-                await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create([
-                Plain(text=await GarbageTranslationHandler.get_translation(msg=text, times=0))
-            ]), QuoteSource(strategy()))
+                Plain(text=await GarbageTranslation.get_translation(msg=text, times=0))
+            ]), QuoteSource())
         else:
             return None
 
@@ -92,23 +89,23 @@ class GarbageTranslationHandler(AbstractHandler):
             translated = msg
         last_lang = ""
         for i in range(times):
-            this_lang = random.choice(GarbageTranslationHandler.lang)
+            this_lang = random.choice(GarbageTranslation.lang)
             while this_lang == last_lang:
-                this_lang = random.choice(GarbageTranslationHandler.lang)
+                this_lang = random.choice(GarbageTranslation.lang)
             url = f'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl={this_lang}&q={translated}'
             try:
                 async with aiohttp.ClientSession(
-                        cookies=GarbageTranslationHandler.cookies,
-                        headers=GarbageTranslationHandler.headers) as session:
-                    async with session.get(url=url, headers=GarbageTranslationHandler.headers) as resp:
+                        cookies=GarbageTranslation.cookies,
+                        headers=GarbageTranslation.headers) as session:
+                    async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
                         result = await resp.json()
             except json.decoder.JSONDecodeError:
-                await GarbageTranslationHandler.update_cookie()
+                await GarbageTranslation.update_cookie()
                 try:
                     async with aiohttp.ClientSession(
-                            cookies=GarbageTranslationHandler.cookies,
-                            headers=GarbageTranslationHandler.headers) as session:
-                        async with session.get(url=url, headers=GarbageTranslationHandler.headers) as resp:
+                            cookies=GarbageTranslation.cookies,
+                            headers=GarbageTranslation.headers) as session:
+                        async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
                             result = await resp.json()
                 except:
                     return "出错，请检查您的输入内容是否过长。"
@@ -125,17 +122,17 @@ class GarbageTranslationHandler(AbstractHandler):
         url = f'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=zh&q={translated}'
         try:
             async with aiohttp.ClientSession(
-                    cookies=GarbageTranslationHandler.cookies,
-                    headers=GarbageTranslationHandler.headers) as session:
-                async with session.get(url=url, headers=GarbageTranslationHandler.headers) as resp:
+                    cookies=GarbageTranslation.cookies,
+                    headers=GarbageTranslation.headers) as session:
+                async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
                     result = await resp.json()
         except json.decoder.JSONDecodeError:
-            await GarbageTranslationHandler.update_cookie()
+            await GarbageTranslation.update_cookie()
             try:
                 async with aiohttp.ClientSession(
-                        cookies=GarbageTranslationHandler.cookies,
-                        headers=GarbageTranslationHandler.headers) as session:
-                    async with session.get(url=url, headers=GarbageTranslationHandler.headers) as resp:
+                        cookies=GarbageTranslation.cookies,
+                        headers=GarbageTranslation.headers) as session:
+                    async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
                         result = await resp.json()
             except:
                 return "出错，请检查您的输入内容是否过长。"
@@ -150,8 +147,8 @@ class GarbageTranslationHandler(AbstractHandler):
     @staticmethod
     async def update_cookie():
         try:
-            GarbageTranslationHandler.cookies = requests.Session().get('https://translate.google.com',
-                                                                       headers=GarbageTranslationHandler.headers).cookies
+            GarbageTranslation.cookies = requests.Session().get('https://translate.google.com',
+                                                                headers=GarbageTranslation.headers).cookies
             return "更新 Cookie 成功。"
         except:
             return "更新 Cookie 失败。"

@@ -6,21 +6,25 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import orm, GNNUCredit, GNNUCreditHistory
-from SAGIRIBOT.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, GNNUCredit, GNNUCreditHistory
+from sagiri_bot.decorators import switch, blacklist
 
 saya = Saya.current()
 channel = Channel.current()
 
+channel.name("GNNUCredit")
+channel.author("nullqwertyuiop")
+channel.description("学分记录")
+
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def gnnu_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+async def gnnu_credit_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await GNNUCreditHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class GNNUCreditHandler(AbstractHandler):
@@ -38,15 +42,15 @@ class GNNUCreditHandler(AbstractHandler):
                 student_id = int(student_id)
                 return MessageItem(MessageChain.create(
                     await GNNUCreditHandler.update_qq(member, student_id, student_name)
-                ), QuoteSource(GroupStrategy()))
+                ), QuoteSource())
             except ValueError:
                 return MessageItem(MessageChain.create([
                     Plain(text=f"输入学号 ({student_id}) 有误，请检查您的输入")
-                ]), QuoteSource(GroupStrategy()))
+                ]), QuoteSource())
         elif message.asDisplay() == "我的实践学分":
             return MessageItem(MessageChain.create(
                 await GNNUCreditHandler.get_by_qq(member)
-            ), QuoteSource(GroupStrategy()))
+            ), QuoteSource())
 
     @staticmethod
     async def update_qq(member: Member, student_id: int, student_name: str):

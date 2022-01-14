@@ -1,5 +1,6 @@
 import re
 
+from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.chain import MessageChain
@@ -23,7 +24,7 @@ channel.description("bot管理插件，必要插件，请勿卸载！否则会�
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def bot_manager_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await BotManagement.handle(app, message, group, member):
+    if result := await BotManagement.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -35,7 +36,8 @@ class BotManagement(AbstractHandler):
     @staticmethod
     @switch(response_administrator=True)
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         message_text = message.asDisplay()
         if message_text.startswith("setting -set "):
             return await execute_setting_update(group, member, message_text)

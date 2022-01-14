@@ -12,13 +12,13 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import orm, SignInReward, Setting, UserCalledCount
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import get_setting, update_user_call_count_plus1
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, SignInReward, Setting, UserCalledCount
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import get_setting, update_user_call_count_plus
 from modules.WalletHandler import WalletHandler
 
 saya = Saya.current()
@@ -28,7 +28,7 @@ channel = Channel.current()
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def sign_in_reward_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await SignInRewardHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class SignInRewardHandler(AbstractHandler):
@@ -47,11 +47,11 @@ class SignInRewardHandler(AbstractHandler):
         if message.asDisplay() in ("签到", "簽到"):
             if not await get_setting(group.id, Setting.sign_in):
                 return None
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             result = await SignInRewardHandler.sign_in(group, member)
             return MessageItem(MessageChain.create([
                 # Image(data_bytes=await SignInRewardHandler.get_avatar(member.id)),
-                Plain(text=result)]), QuoteSource(GroupStrategy()))
+                Plain(text=result)]), QuoteSource())
 
     @staticmethod
     async def sign_in(group: Group, member: Member):

@@ -12,13 +12,13 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import orm, ScheduledMessage
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import user_permission_require
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, ScheduledMessage
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import user_permission_require
 
 saya = Saya.current()
 channel = Channel.current()
@@ -27,7 +27,7 @@ channel = Channel.current()
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def scheduled_message_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await ScheduledMessageHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class ScheduledMessageHandler(AbstractHandler):
@@ -45,40 +45,40 @@ class ScheduledMessageHandler(AbstractHandler):
             if (await user_permission_require(group, member, 2)) or (member.permission != MemberPerm.Member):
                 return MessageItem(
                     await ScheduledMessageHandler.update_scheduled_message(group, message),
-                    QuoteSource(GroupStrategy())
+                    QuoteSource()
                 )
             else:
-                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource())
         elif re.match(r"删除定时消息#(.*)", message.asDisplay()):
             if (await user_permission_require(group, member, 2)) or (member.permission != MemberPerm.Member):
                 return MessageItem(
                     await ScheduledMessageHandler.delete_scheduled_message(group, message),
-                    QuoteSource(GroupStrategy())
+                    QuoteSource()
                 )
             else:
-                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource())
         elif message.asDisplay() == "刷新定时消息缓存":
-            return MessageItem(await ScheduledMessageHandler.update_cache(), QuoteSource(GroupStrategy()))
+            return MessageItem(await ScheduledMessageHandler.update_cache(), QuoteSource())
         elif message.asDisplay() == "开启定时消息":
             if await user_permission_require(group, member, 4):
                 ScheduledMessageHandler.s_switch = True
-                return MessageItem(MessageChain.create([Plain(text=f"开启定时消息成功。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text=f"开启定时消息成功。")]), QuoteSource())
             else:
-                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource())
         elif message.asDisplay() == "停止定时消息":
             if await user_permission_require(group, member, 4):
                 ScheduledMessageHandler.s_switch = False
-                return MessageItem(MessageChain.create([Plain(text=f"关闭定时消息成功。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text=f"关闭定时消息成功。")]), QuoteSource())
             else:
-                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource())
         elif message.asDisplay() == "查看所有定时消息":
             if await user_permission_require(group, member, 4):
                 return MessageItem(MessageChain.fromPersistentString(str(ScheduledMessageHandler.cache)),
-                                   QuoteSource(GroupStrategy()))
+                                   QuoteSource())
             else:
-                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text="权限不足。")]), QuoteSource())
         elif message.asDisplay() == "本群定时消息":
-            return MessageItem(await ScheduledMessageHandler.fetch_scheduled_msg(group), QuoteSource(GroupStrategy()))
+            return MessageItem(await ScheduledMessageHandler.fetch_scheduled_msg(group), QuoteSource())
         else:
             return None
 

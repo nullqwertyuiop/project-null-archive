@@ -6,11 +6,11 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import orm, Setting, BlackList, PermanentBlackList
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, Setting, BlackList, PermanentBlackList
 
 saya = Saya.current()
 channel = Channel.current()
@@ -19,7 +19,7 @@ channel = Channel.current()
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def settings_check_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await SettingsCheckHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class SettingsCheckHandler(AbstractHandler):
@@ -66,13 +66,13 @@ class SettingsCheckHandler(AbstractHandler):
                 ).where(Setting.group_id == group.id)
             )
             if not check:
-                return MessageItem(MessageChain.create([Plain(text=f"无本群数据。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text=f"无本群数据。")]), QuoteSource())
             if await orm.fetchall(
                     select(
                         PermanentBlackList.id
                     ).where(PermanentBlackList.id == group.id, PermanentBlackList.type == "group")
             ):
-                return MessageItem(MessageChain.create([Plain(text="本群已在黑名单中。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text="本群已在黑名单中。")]), QuoteSource())
             resp = [Plain(text=f"[本群功能授权状态]"),
                     Plain(text=f"\n总开关：　　　{'开启' if check[0][0] else '关闭'}"),
                     Plain(text=f"\n├白名单：　　{'是' if check[0][1] else '否'}"),
@@ -153,4 +153,4 @@ class SettingsCheckHandler(AbstractHandler):
                     else:
                         resp.append(Plain(text=f"{count}. {member_id}"))
                     count += 1
-            return MessageItem(MessageChain.create(resp), QuoteSource(GroupStrategy()))
+            return MessageItem(MessageChain.create(resp), QuoteSource())

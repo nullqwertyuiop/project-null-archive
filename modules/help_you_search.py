@@ -11,14 +11,13 @@ from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender import Strategy
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender, FriendMessageSender, TempMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, Normal, QuoteSource, FriendStrategy, TempStrategy
-from SAGIRIBOT.ORM.AsyncORM import Setting
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import get_setting
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import Normal, QuoteSource
+from sagiri_bot.orm.async_orm import Setting
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import get_setting
 
 saya = Saya.current()
 channel = Channel.current()
@@ -39,9 +38,9 @@ async def help_you_search_handler(app: Ariadne, message: MessageChain, group: Gr
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def help_you_search_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await HelpYouSearchHandler.handle(app, message, strategy=GroupStrategy, group=group,
+    if result := await HelpYouSearchHandler.handle(app, message, strategy=, group=group,
                                                    member=member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class HelpYouSearchHandler(AbstractHandler):
@@ -84,7 +83,7 @@ class HelpYouSearchHandler(AbstractHandler):
                         f'/><title>帮你百度</title><summary>{key}</summary></item><source name="Project. Null" icon="" '
                         f'url="" action="app" a_actionData="com.tencent.mtt://www.baidu.com/s?wd={key}" '
                         f'i_actionData="tencent100446242://http://www.baidu.com/s?wd={key}" appid="-1" /></msg>')]),
-                Normal(GroupStrategy()))
+                Normal())
         elif type == "link":
             return Plain(text=f'http://www.baidu.com/s?wd={key}')
         elif type == "qrcode":

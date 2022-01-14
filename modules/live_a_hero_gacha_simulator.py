@@ -16,13 +16,13 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import orm, Setting, LiveAHeroSimulator, UserCalledCount, GachaSimulatorRecord
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import update_user_call_count_plus1, get_setting, user_permission_require
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, Setting, LiveAHeroSimulator, UserCalledCount, GachaSimulatorRecord
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import update_user_call_count_plus, get_setting, user_permission_require
 from modules.WalletHandler import WalletHandler
 
 saya = Saya.current()
@@ -92,7 +92,7 @@ except FileNotFoundError as err:
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def template_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await LiveAHeroSimulatorHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class LiveAHeroSimulatorHandler(AbstractHandler):
@@ -111,61 +111,61 @@ class LiveAHeroSimulatorHandler(AbstractHandler):
             if not await get_setting(group.id, Setting.gacha_simulator):
                 return MessageItem(
                     MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
-                    QuoteSource(GroupStrategy())
+                    QuoteSource()
                 )
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(
                 MessageChain.create(await LiveAHeroSimulatorHandler.get_simulation(member, group, limited=False)),
-                QuoteSource(GroupStrategy()))
+                QuoteSource())
         elif message.asDisplay() in (
                 "LAH抽卡总结", "LAH 抽卡总结", "lah抽卡总结", "lah 抽卡总结", "LAH抽卡總結", "LAH 抽卡總結", "lah抽卡總結", "lah 抽卡總結"
         ):
             if not await get_setting(group.id, Setting.gacha_simulator):
                 return MessageItem(
                     MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
-                    QuoteSource(GroupStrategy())
+                    QuoteSource()
                 )
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await LiveAHeroSimulatorHandler.get_summary(member, group)),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in (
                 "LAH模拟限定抽卡", "LAH 模拟限定抽卡", "lah模拟限定抽卡", "lah 模拟限定抽卡", "LAH模擬限定抽卡", "LAH 模擬限定抽卡", "lah模擬限定抽卡",
                 "lah 模擬限定抽卡"):
             if not await get_setting(group.id, Setting.gacha_simulator):
                 return MessageItem(
                     MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
-                    QuoteSource(GroupStrategy())
+                    QuoteSource()
                 )
-            # await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            # await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             # return MessageItem(MessageChain.create(await LiveAHeroSimulatorHandler.get_simulation(member, group, limited=True)),
-            #                   QuoteSource(GroupStrategy()))
-            return MessageItem(MessageChain.create([Plain(text=f"限定卡池已关闭。")]), QuoteSource(GroupStrategy()))
+            #                   QuoteSource())
+            return MessageItem(MessageChain.create([Plain(text=f"限定卡池已关闭。")]), QuoteSource())
         elif message.asDisplay() in (
                 "LAH模拟UP抽卡", "LAH 模拟 UP 抽卡", "lah模拟up抽卡", "lah 模拟 up 抽卡", "LAH模擬UP抽卡", "LAH 模擬UP抽卡", "lah模擬up抽卡",
                 "lah 模擬 up 抽卡"):
             if not await get_setting(group.id, Setting.gacha_simulator):
                 return MessageItem(
                     MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
-                    QuoteSource(GroupStrategy())
+                    QuoteSource()
                 )
-            # await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            # await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             # return MessageItem(
             #     MessageChain.create(await LiveAHeroSimulatorHandler.get_simulation(member, group, up=True)),
-            #     QuoteSource(GroupStrategy())
+            #     QuoteSource()
             # )
-            return MessageItem(MessageChain.create([Plain(text=f"UP 卡池已关闭。")]), QuoteSource(GroupStrategy()))
+            return MessageItem(MessageChain.create([Plain(text=f"UP 卡池已关闭。")]), QuoteSource())
         elif message.asDisplay().startswith("吃桃模式#"):
             if member.permission == MemberPerm.Member and not await user_permission_require(group, member, 2):
-                return MessageItem(MessageChain.create([Plain(text=f"权限不足。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text=f"权限不足。")]), QuoteSource())
             _, times = message.asDisplay().split("#")
             try:
                 times = int(times)
                 if times < 0:
-                    return MessageItem(MessageChain.create([Plain(text=f"参数有误。")]), QuoteSource(GroupStrategy()))
+                    return MessageItem(MessageChain.create([Plain(text=f"参数有误。")]), QuoteSource())
             except ValueError:
-                return MessageItem(MessageChain.create([Plain(text=f"参数有误。")]), QuoteSource(GroupStrategy()))
+                return MessageItem(MessageChain.create([Plain(text=f"参数有误。")]), QuoteSource())
             LiveAHeroSimulatorHandler.peach_mode.update({group.id: times})
-            return MessageItem(MessageChain.create([Plain(text=f"抽卡吃桃模式已启用 {times} 次。")]), QuoteSource(GroupStrategy()))
+            return MessageItem(MessageChain.create([Plain(text=f"抽卡吃桃模式已启用 {times} 次。")]), QuoteSource())
         else:
             return None
 

@@ -6,21 +6,19 @@ from typing import Union
 import aiohttp
 from PIL import Image as IMG, ImageDraw, ImageFilter
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import Group, Member, GroupMessage, TempMessage, FriendMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Image
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender import Strategy
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender, TempMessageSender, FriendMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, TempStrategy, FriendStrategy
-from SAGIRIBOT.MessageSender.Strategy import Normal
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import update_user_call_count_plus1, UserCalledCount
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import Normal
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
 
 saya = Saya.current()
 channel = Channel.current()
@@ -28,20 +26,14 @@ channel = Channel.current()
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def pn_avatar_fun_pic_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await PNAvatarFunPicHandler.handle(app, message, strategy=FriendStrategy, friend=friend):
-        await FriendMessageSender(result.strategy).send(app, result.message, message, friend)
-
-
-@channel.use(ListenerSchema(listening_events=[TempMessage]))
-async def pn_avatar_fun_pic_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await PNAvatarFunPicHandler.handle(app, message, strategy=TempStrategy, group=group, member=member):
-        await TempMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await PNAvatarFunPicHandler.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def pn_avatar_fun_pic_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await PNAvatarFunPicHandler.handle(app, message, strategy=GroupStrategy, group=group, member=member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await PNAvatarFunPicHandler.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class PNAvatarFunPicHandler(AbstractHandler):
@@ -56,29 +48,29 @@ class PNAvatarFunPicHandler(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, strategy: Strategy,
-                     group: Group = None, member: Member = None, friend: Friend = None):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         message_text = message.asDisplay()
         if message_text.startswith("完美"):
             match_elements = PNAvatarFunPicHandler.get_match_element(message)
             if len(match_elements) >= 1:
                 if member and group:
-                    await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                    await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
                 element = match_elements[0]
                 return MessageItem(MessageChain.create([
                     await PNAvatarFunPicHandler.perfect(element.target if isinstance(element, At) else element.url)]
-                ), Normal(strategy()))
+                ), Normal())
             elif re.match(r"完美 [0-9]+", message_text):
                 if member and group:
-                    await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                    await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
                 return MessageItem(MessageChain.create([
                     await PNAvatarFunPicHandler.perfect(int(message_text[3:]))]
-                ), Normal(strategy()))
+                ), Normal())
         elif message_text.startswith("3p"):
             match_elements = PNAvatarFunPicHandler.get_match_element(message)
             if len(match_elements) == 2:
                 if member and group:
-                    await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                    await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
                 element1 = match_elements[0]
                 element2 = match_elements[1]
                 return MessageItem(MessageChain.create([await PNAvatarFunPicHandler.three_p([
@@ -86,10 +78,10 @@ class PNAvatarFunPicHandler(AbstractHandler):
                     member.id if member else friend.id,
                     element2.target if isinstance(element2, At) else element2.url
                 ])]
-                                                       ), Normal(strategy()))
+                                                       ), Normal())
             elif len(match_elements) > 2:
                 if member and group:
-                    await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                    await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
                 element1 = match_elements[0]
                 element2 = match_elements[1]
                 element3 = match_elements[2]
@@ -98,10 +90,10 @@ class PNAvatarFunPicHandler(AbstractHandler):
                     element2.target if isinstance(element2, At) else element2.url,
                     element3.target if isinstance(element3, At) else element3.url
                 ])]
-                                                       ), Normal(strategy()))
+                                                       ), Normal())
             elif re.match(r"3p \d+ \d+(?: \d+)?", message_text):
                 if member and group:
-                    await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                    await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
                 split = message_text[3:].split(" ")
                 if len(split) == 2:
                     left = split[0]
@@ -115,22 +107,7 @@ class PNAvatarFunPicHandler(AbstractHandler):
                     return None
                 return MessageItem(MessageChain.create([
                     await PNAvatarFunPicHandler.three_p([int(left), int(middle), int(right)])]
-                ), Normal(strategy()))
-        elif message_text.startswith("壮熊"):
-            match_elements = PNAvatarFunPicHandler.get_match_element(message)
-            if len(match_elements) >= 1:
-                if member and group:
-                    await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-                element = match_elements[0]
-                return MessageItem(MessageChain.create([
-                    await PNAvatarFunPicHandler.bear(element.target if isinstance(element, At) else element.url)]
-                ), Normal(strategy()))
-            elif re.match(r"壮熊 [0-9]+", message_text):
-                if member and group:
-                    await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-                return MessageItem(MessageChain.create([
-                    await PNAvatarFunPicHandler.bear(int(message_text[3:]))]
-                ), Normal(strategy()))
+                ), Normal())
         else:
             return None
 

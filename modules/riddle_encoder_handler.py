@@ -8,11 +8,11 @@ from graia.ariadne.message.element import Plain
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource, Revoke
-from SAGIRIBOT.decorators import switch, blacklist
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource, Revoke
+from sagiri_bot.decorators import switch, blacklist
 
 saya = Saya.current()
 channel = Channel.current()
@@ -21,7 +21,7 @@ channel = Channel.current()
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def riddle_encoder_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await RiddleEncoderHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class RiddleEncoderHandler(AbstractHandler):
@@ -39,21 +39,21 @@ class RiddleEncoderHandler(AbstractHandler):
                 _, mode, key = processed
                 offset = randrange(10000) + 1
                 if mode in ("encode", "编码"):
-                    return MessageItem(MessageChain.create([Plain(text=await RiddleEncoderHandler.encode(offset, key))]), Revoke(GroupStrategy(), delay_second=10))
+                    return MessageItem(MessageChain.create([Plain(text=await RiddleEncoderHandler.encode(offset, key))]), Revoke(, delay_second=10))
                 elif mode in ("decode", "解码"):
-                    return MessageItem(MessageChain.create([Plain(text=await RiddleEncoderHandler.decode(key))]), Revoke(GroupStrategy(), delay_second=60))
+                    return MessageItem(MessageChain.create([Plain(text=await RiddleEncoderHandler.decode(key))]), Revoke(, delay_second=60))
             elif len(processed) == 4:
                 _, mode, offset, key = processed
                 try:
                     offset = int(offset)
                 except ValueError:
-                    return MessageItem(MessageChain.create([Plain(text=f"偏移量仅支持 1~10000 间整数")]), QuoteSource(GroupStrategy()))
+                    return MessageItem(MessageChain.create([Plain(text=f"偏移量仅支持 1~10000 间整数")]), QuoteSource())
                 if not (0 < offset <= 10000):
-                    return MessageItem(MessageChain.create([Plain(text=f"偏移量仅支持 1~10000 间整数")]), QuoteSource(GroupStrategy()))
+                    return MessageItem(MessageChain.create([Plain(text=f"偏移量仅支持 1~10000 间整数")]), QuoteSource())
                 if mode in ("encode", "编码"):
-                    return MessageItem(MessageChain.create([Plain(text=await RiddleEncoderHandler.encode(offset, key))]), Revoke(GroupStrategy(), delay_second=10))
+                    return MessageItem(MessageChain.create([Plain(text=await RiddleEncoderHandler.encode(offset, key))]), Revoke(, delay_second=10))
                 elif mode in ("decode", "解码"):
-                    return MessageItem(MessageChain.create([Plain(text=await RiddleEncoderHandler.decode(key, offset))]), Revoke(GroupStrategy(), delay_second=60))
+                    return MessageItem(MessageChain.create([Plain(text=await RiddleEncoderHandler.decode(key, offset))]), Revoke(, delay_second=60))
         else:
             return None
 

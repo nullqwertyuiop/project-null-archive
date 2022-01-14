@@ -2,6 +2,8 @@ import re
 import jieba
 import datetime
 
+from graia.ariadne.model import Friend
+from sqlalchemy.exc import DataError
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.element import Plain
@@ -24,7 +26,7 @@ channel.description("一个记录聊天记录的插件，可配合词云等插�
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def chat_record_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    await ChatRecorder.handle(app, message, group, member)
+    await ChatRecorder.handle(app, message, group=group, member=member)
 
 
 class ChatRecorder(AbstractHandler):
@@ -42,20 +44,37 @@ class ChatRecorder(AbstractHandler):
         filter_words = re.findall(r"\[mirai:(.*?)\]", content, re.S)
         for i in filter_words:
             content = content.replace(f"[mirai:{i}]", "")
-        seg_result = jieba.lcut(content) if content else ''
-        await orm.add(
-            ChatRecord,
-            {
-                "time": datetime.datetime.now(),
-                "group_id": group.id,
-                "member_id": member.id,
-                "persistent_string": message.asPersistentString(),
-                "seg": "|".join(seg_result) if seg_result else ''
-            }
-        )
+        if content:
+            seg_result = jieba.lcut(content) if content else ''
+            try:
+                await orm.add(
+                    ChatRecord,
+                    {
+                        "time": datetime.datetime.now(),
+                        "group_id": group.id,
+                        "member_id": member.id,
+                        "persistent_string": message.asPersistentString(),
+                        "seg": "|".join(seg_result) if seg_result else ''
+                    }
+                )
+            except DataError:
+                try:
+                    await orm.add(
+                        ChatRecord,
+                        {
+                            "time": datetime.datetime.now(),
+                            "group_id": group.id,
+                            "member_id": member.id,
+                            "persistent_string": message.asPersistentString()[:4000],
+                            "seg": ("|".join(seg_result))[:4000] if seg_result else ''
+                        }
+                    )
+                except Exception:
+                    return None
 
     @staticmethod
-    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         await ChatRecorder.record(message, group, member)
 
 

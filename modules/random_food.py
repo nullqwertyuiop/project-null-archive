@@ -10,13 +10,13 @@ from graia.ariadne.message.element import Plain
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import UserCalledCount
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import update_user_call_count_plus1
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import UserCalledCount
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import update_user_call_count_plus
 
 saya = Saya.current()
 channel = Channel.current()
@@ -27,7 +27,7 @@ with open(f"{os.getcwd()}/statics/food.json", "r", encoding="utf-8") as r:
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def jue_jue_zi_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await RandomFoodHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class RandomFoodHandler(AbstractHandler):
@@ -40,29 +40,29 @@ class RandomFoodHandler(AbstractHandler):
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
         if message.asDisplay() in ("随机早餐", "早餐吃啥", "早上吃啥", "隨機早餐", "早餐吃啥", "早上吃啥"):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create([Plain(text=await RandomFoodHandler.meal("breakfast"))]),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("随机午餐", "午餐吃啥", "中午吃啥", "隨機午餐", "午餐吃啥", "中午吃啥"):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create([Plain(text=await RandomFoodHandler.meal("lunch"))]),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("随机晚餐", "晚餐吃啥", "晚上吃啥", "隨機晚餐", "晚餐吃啥", "晚上吃啥"):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create([Plain(text=await RandomFoodHandler.meal("dinner"))]),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("随机奶茶", "来杯奶茶", "隨機奶茶", "來杯奶茶"):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create([Plain(text=await RandomFoodHandler.tea("milk_tea"))]),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("随机果茶", "来杯果茶", "隨機果茶", "來杯果茶"):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create([Plain(text=await RandomFoodHandler.tea("fruit_tea"))]),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("随机饮品", "喝点什么", "来杯喝的", "隨機飲品", "喝點什麼", "來杯喝的"):
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create([Plain(text=await RandomFoodHandler.tea("random"))]),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
 
     @staticmethod
     async def meal(which: str):

@@ -10,12 +10,12 @@
 # from graia.scheduler import GraiaScheduler
 # from requests import utils
 #
-# from SAGIRIBOT.Core.AppCore import AppCore
-# from SAGIRIBOT.Handler.Handler import AbstractHandler
-# from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-# from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-# from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-# from SAGIRIBOT.decorators import switch, blacklist
+# from sagiri_bot.core.app_core import AppCore
+# from sagiri_bot.handler.handler import AbstractHandler
+# from sagiri_bot.message_sender.message_item import MessageItem
+# from sagiri_bot.message_sender.message_sender import MessageSender
+# from sagiri_bot.message_sender.strategy import QuoteSource
+# from sagiri_bot.decorators import switch, blacklist
 #
 # saya = Saya.current()
 # channel = Channel.current()
@@ -30,7 +30,7 @@
 # async def snowball_realtime_news_handler(app: Ariadne, message: MessageChain, group: Group,
 #                                          member: Member):
 #     if result := await SnowBallRealtimeHandler.handle(app, message, group, member):
-#         await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+#         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 #
 #
 # class SnowBallRealtimeHandler(AbstractHandler):
@@ -46,11 +46,11 @@
 #         if message.asDisplay() == "##签到":
 #             member_id = member.id
 #             result = await SignInRewardHandler.sign_in(member_id)
-#             return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
+#             return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
 #         elif message.asDisplay() == "##钱包":
 #             member_id = member.id
 #             result = await SignInRewardHandler.get_wallet(member_id)
-#             return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
+#             return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
 #
 #     @staticmethod
 #     async def get_cookie():

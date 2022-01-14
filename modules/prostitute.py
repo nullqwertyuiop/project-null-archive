@@ -14,13 +14,13 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.ORM.AsyncORM import orm, Prostitute, SignInReward, Setting
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import get_setting
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, Prostitute, SignInReward, Setting
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import get_setting
 from modules.WalletHandler import WalletHandler
 
 saya = Saya.current()
@@ -31,7 +31,7 @@ exchange_ratio = 250
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def speak_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await ProstituteHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class ProstituteHandler(AbstractHandler):
@@ -50,7 +50,7 @@ class ProstituteHandler(AbstractHandler):
         #         result = await ProstituteHandler.prostitute(member.id)
         #         return MessageItem(MessageChain.create([
         #             Image(data_bytes=await ProstituteHandler.get_avatar(member.id)),
-        #             Plain(text=result)]), QuoteSource(GroupStrategy()))
+        #             Plain(text=result)]), QuoteSource())
         #     except AccountMuted:
         #         logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
         #         return None
@@ -60,11 +60,11 @@ class ProstituteHandler(AbstractHandler):
             result = await ProstituteHandler.get_beta(group, member)
             return MessageItem(MessageChain.create([
                 # Image(data_bytes=await ProstituteHandler.get_avatar(member.id)),
-                Plain(text=result)]), QuoteSource(GroupStrategy()))
+                Plain(text=result)]), QuoteSource())
         elif re.match("转硬币#.*", message.asDisplay()):
             if not await get_setting(group.id, Setting.prostitute):
                 return None
-            return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource(GroupStrategy()))
+            return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource())
             # try:
             #     _, amount = message.asDisplay().split("#")
             #     member_id = member.id
@@ -72,17 +72,17 @@ class ProstituteHandler(AbstractHandler):
             #         amount = int(amount)
             #     except:
             #         result = f"用法：\n转硬币#(整数)\n兑换比率：{exchange_ratio}β币 -> 1硬币"
-            #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
-            #     await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
+            #     await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             #     result = await ProstituteHandler.beta_to_coin(member_id, amount)
-            #     return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
+            #     return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
             # except AccountMuted:
             #     logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
             #     return None
         elif re.match("转β币#.*", message.asDisplay()):
             if not await get_setting(group.id, Setting.prostitute):
                 return None
-            return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource(GroupStrategy()))
+            return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource())
             # try:
             #     _, amount = message.asDisplay().split("#")
             #     member_id = member.id
@@ -90,10 +90,10 @@ class ProstituteHandler(AbstractHandler):
             #         amount = int(amount)
             #     except:
             #         result = f"用法：\n转β币#(整数)\n兑换比率：1硬币 -> {exchange_ratio}β币"
-            #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
-            #     await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+            #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
+            #     await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             #     result = await ProstituteHandler.coin_to_beta(member_id, amount)
-            #     return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
+            #     return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
             # except AccountMuted:
             #     logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
             #     return None
@@ -101,18 +101,18 @@ class ProstituteHandler(AbstractHandler):
         #     _, race = message.asDisplay().split("#")
         #     if race == "人类":
         #         result = await ProstituteHandler.set_race(member.id, "self", "human")
-        #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
+        #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
         #     elif race == "兽人":
         #         result = await ProstituteHandler.set_race(member.id, "self", "anthro")
-        #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
+        #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
         # elif re.match("客人种族#.*", message.asDisplay()):
         #     _, race =message.asDisplay().split("#")
         #     if race == "人类":
         #         result = await ProstituteHandler.set_race(member.id, "client", "human")
-        #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
+        #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
         #     elif race == "兽人":
         #         result = await ProstituteHandler.set_race(member.id, "client", "anthro")
-        #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource(GroupStrategy()))
+        #         return MessageItem(MessageChain.create([Plain(text=result)]), QuoteSource())
 
     @staticmethod
     async def prostitute(member_id: int):

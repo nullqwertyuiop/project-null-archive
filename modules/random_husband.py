@@ -16,13 +16,13 @@ from graia.ariadne.message.element import Plain, Image
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender
-from SAGIRIBOT.ORM.AsyncORM import orm, RandomHusband, Setting, UserCalledCount
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource
-from SAGIRIBOT.utils import update_user_call_count_plus1, get_setting
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.orm.async_orm import orm, RandomHusband, Setting, UserCalledCount
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.utils import update_user_call_count_plus, get_setting
 from modules.WalletHandler import WalletHandler
 
 saya = Saya.current()
@@ -32,7 +32,7 @@ channel = Channel.current()
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def template_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await RandomHusbandHandler.handle(app, message, group, member):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class RandomHusbandHandler(AbstractHandler):
@@ -54,51 +54,51 @@ class RandomHusbandHandler(AbstractHandler):
         if message.asDisplay() in ("随机老公", "隨機老公"):
             if not await get_setting(group.id, Setting.random_husband):
                 return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
-                                   QuoteSource(GroupStrategy()))
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                                   QuoteSource())
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "mixed")),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("随机兽人老公", "隨機獸人老公"):
             if not await get_setting(group.id, Setting.random_husband):
                 return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
-                                   QuoteSource(GroupStrategy()))
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                                   QuoteSource())
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "furry")),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("随机人类老公", "隨機人類老公"):
             if not await get_setting(group.id, Setting.random_husband):
                 return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
-                                   QuoteSource(GroupStrategy()))
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                                   QuoteSource())
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.husband(member, group, "human")),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("十连老公", "十連老公"):
             if not await get_setting(group.id, Setting.ten_husband):
                 return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
-                                   QuoteSource(GroupStrategy()))
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                                   QuoteSource())
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "mixed")),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("十连兽人老公", "十連獸人老公"):
             if not await get_setting(group.id, Setting.ten_husband):
                 return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
-                                   QuoteSource(GroupStrategy()))
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                                   QuoteSource())
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "furry")),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif message.asDisplay() in ("十连人类老公", "十連人類老公"):
             if not await get_setting(group.id, Setting.ten_husband):
                 return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
-                                   QuoteSource(GroupStrategy()))
-            await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
+                                   QuoteSource())
+            await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(member, group, "human")),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         elif re.match("\d+(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公", message.asDisplay()):
             times = re.compile("(\d+)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公").search(message.asDisplay()).group(1)
             times = int(times)
             if times > 100:
                 return MessageItem(MessageChain.create([Plain(text=f"不要贪心。")]),
-                                   QuoteSource(GroupStrategy()))
+                                   QuoteSource())
             if pool := re.compile("(\d+)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公").search(message.asDisplay()).group(2):
                 pool_cord = {
                     "兽人": "furry",
@@ -111,7 +111,7 @@ class RandomHusbandHandler(AbstractHandler):
                 pool = "mixed"
             return MessageItem(MessageChain.create(
                 await RandomHusbandHandler.get_custom(member, group, pool, times)),
-                               QuoteSource(GroupStrategy()))
+                               QuoteSource())
         else:
             return None
 

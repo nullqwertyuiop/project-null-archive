@@ -6,80 +6,76 @@ from io import BytesIO
 
 from PIL import Image as IMG
 from graia.ariadne.app import Ariadne, Friend
-from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage, TempMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from sqlalchemy import select
 
-from SAGIRIBOT.Handler.Handler import AbstractHandler
-from SAGIRIBOT.MessageSender.MessageItem import MessageItem
-from SAGIRIBOT.MessageSender.MessageSender import GroupMessageSender, FriendMessageSender, TempMessageSender
-from SAGIRIBOT.MessageSender.Strategy import GroupStrategy, QuoteSource, StrategyType, TempStrategy, FriendStrategy
-from SAGIRIBOT.ORM.AsyncORM import orm, Setting, UsageRecord
-from SAGIRIBOT.decorators import switch, blacklist
-from SAGIRIBOT.utils import update_user_call_count_plus1, UserCalledCount
+from sagiri_bot.handler.handler import AbstractHandler
+from sagiri_bot.message_sender.message_item import MessageItem
+from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import orm, Setting, UsageRecord
+from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
 
 saya = Saya.current()
 channel = Channel.current()
 
-
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def clow_card_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await ClowCardHandler.handle(app, message, strategy=GroupStrategy(), group=group, member=member, event="GroupMessage"):
-        await GroupMessageSender(result.strategy).send(app, result.message, message, group, member)
+channel.name("ClowCard")
+channel.author("nullqwertyuiop")
+channel.description("库洛牌、小樱牌、透明牌")
 
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def clow_card_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await ClowCardHandler.handle(app, message, strategy=FriendStrategy(), friend=friend, event="FriendMessage"):
-        await FriendMessageSender(result.strategy).send(app, result.message, message, friend)
+    if result := await ClowCard.handle(app, message, friend=friend):
+        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[TempMessage]))
+@channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def clow_card_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await ClowCardHandler.handle(app, message, strategy=TempStrategy(), group=group, member=member, event="TempMessage"):
-        await TempMessageSender(result.strategy).send(app, result.message, message, group, member)
+    if result := await ClowCard.handle(app, message, group=group, member=member):
+        await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
-class ClowCardHandler(AbstractHandler):
-    __name__ = "ClowCardHandler"
+class ClowCard(AbstractHandler):
+    __name__ = "ClowCard"
     __description__ = "可以抽库洛牌的Handler"
     __usage__ = "None"
 
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, strategy: StrategyType, group: Group = None,
-                     member: Member = None, friend: Friend = None, event: str = None):
+    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
+                     member: Member = None, friend: Friend = None):
         if message.asDisplay() in ("库洛牌", "庫洛牌"):
             if group and member:
-                await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-                resp = await ClowCardHandler.get_card(member=member, group=group, pool="clow", event=event)
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+                resp = await ClowCard.get_card(member=member, group=group, pool="clow")
             else:
-                resp = await ClowCardHandler.get_card(friend=friend, pool="clow", event=event)
+                resp = await ClowCard.get_card(friend=friend, pool="clow")
         elif message.asDisplay() in ("小樱牌", "小櫻牌"):
             if group and member:
-                await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-                resp = await ClowCardHandler.get_card(member=member, group=group, pool="sakura", event=event)
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+                resp = await ClowCard.get_card(member=member, group=group, pool="sakura")
             else:
-                resp = await ClowCardHandler.get_card(friend=friend, pool="sakura", event=event)
+                resp = await ClowCard.get_card(friend=friend, pool="sakura")
         elif message.asDisplay() == "透明牌":
             if group and member:
-                await update_user_call_count_plus1(group, member, UserCalledCount.functions, "functions")
-                resp = await ClowCardHandler.get_card(member=member, group=group, pool="clear", event=event)
+                await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+                resp = await ClowCard.get_card(member=member, group=group, pool="clear")
             else:
-                resp = await ClowCardHandler.get_card(friend=friend, pool="clear", event=event)
+                resp = await ClowCard.get_card(friend=friend, pool="clear")
         else:
             return None
-        if strategy == TempStrategy():
-            resp.pop(0)
         return MessageItem(
-            MessageChain.create(resp), QuoteSource(strategy))
+            MessageChain.create(resp), QuoteSource())
 
     @staticmethod
-    async def get_card(member: Member = None, group: Group = None, friend: Friend = None, pool: str = "clow", event: str = None):
+    async def get_card(member: Member = None, group: Group = None, friend: Friend = None, pool: str = "clow"):
         cord = {
             "clow": UsageRecord.clow_card,
             "sakura": UsageRecord.clow_card,
