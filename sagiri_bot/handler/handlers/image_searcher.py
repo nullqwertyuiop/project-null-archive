@@ -14,7 +14,7 @@ from graia.ariadne.message.element import Source, Plain, At, Image
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from sqlalchemy import select
 
-from modules.wallet import WalletBalance
+from modules.wallet import Wallet
 from sagiri_bot.utils import get_setting
 from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.decorators import switch, blacklist
@@ -68,7 +68,7 @@ class ImageSearch(AbstractHandler):
                             Setting.img_search_cost
                         ).where(Setting.group_id == group.id))
                     img_search_cost = 500 if not cost else cost[0][0]
-                    wallet = await WalletBalance.get_balance(group, member)
+                    wallet = await Wallet.get_balance(group, member)
                     if wallet - img_search_cost < 0:
                         return MessageItem(MessageChain.create([Plain(text=f"你没有足够多的硬币，搜图消耗 {img_search_cost} 枚硬币。")]),
                                            QuoteSource())
@@ -108,7 +108,7 @@ class ImageSearch(AbstractHandler):
                 if image_get:
                     logger.success("收到用户图片，启动搜索进程！")
                     try:
-                        await WalletBalance.charge(group, member, img_search_cost, "搜图")
+                        await Wallet.charge(group, member, img_search_cost, "搜图")
                         await app.sendGroupMessage(
                             group,
                             await ImageSearch.search_image(message_received[Image][0], group),

@@ -24,7 +24,7 @@ from sagiri_bot.orm.async_orm import orm, RandomHusband, Setting, UserCalledCoun
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.utils import update_user_call_count_plus, get_setting
-from modules.wallet import wallet_handler
+from modules.wallet import Wallet
 
 saya = Saya.current()
 channel = Channel.current()
@@ -240,7 +240,7 @@ class RandomHusbandHandler(AbstractHandler):
                 async with session.get(url=url) as resp:
                     img_content = await resp.read()
             member_avatar = IMG.open(BytesIO(img_content)).convert("RGB").resize((100, 100), IMG.ANTIALIAS)
-            wallet = await wallet_handler.get_balance(group, member)
+            wallet = await Wallet.get_balance(group, member)
             if wallet - amount < 0:
                 return [Plain(text=f"硬币少于 {amount}，无法抽取十连！")]
             else:
@@ -271,7 +271,7 @@ class RandomHusbandHandler(AbstractHandler):
                      "ten_husband_last_date": today,
                      "ten_husband_times": ten_husband_times + 1 - extra}
                 )
-                await wallet_handler.charge(group, member, amount, "十连老公")
+                await Wallet.charge(group, member, amount, "十连老公")
                 if limit == -1:
                     return [Image(data_bytes=output.getvalue()),
                             Plain(text=f"本次抽取耗费 {amount} 硬币，\n你现在一共有 {wallet - amount} 硬币。")]
@@ -325,7 +325,7 @@ class RandomHusbandHandler(AbstractHandler):
                 async with session.get(url=url) as resp:
                     img_content = await resp.read()
             member_avatar = IMG.open(BytesIO(img_content)).convert("RGB").resize((100, 100), IMG.ANTIALIAS)
-            wallet = await wallet_handler.get_balance(group, member)
+            wallet = await Wallet.get_balance(group, member)
             if wallet - amount < 0:
                 return [Plain(text=f"硬币少于 {amount}，无法抽取十连！")]
             else:
@@ -367,7 +367,7 @@ class RandomHusbandHandler(AbstractHandler):
                      "ten_husband_last_date": today,
                      "ten_husband_times": ten_husband_times + 1 - extra}
                 )
-                await wallet_handler.charge(group, member, amount, "十连老公")
+                await Wallet.charge(group, member, amount, "十连老公")
                 if limit == -1:
                     return [Image(data_bytes=output.getvalue()),
                             Plain(text=f"本次抽取耗费 {amount} 硬币，\n你现在一共有 {wallet - amount} 硬币。")]

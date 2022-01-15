@@ -22,7 +22,7 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, Prostitute, SignInReward, Setting
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import get_setting
-from modules.wallet import wallet_handler
+from modules.wallet import Wallet
 
 saya = Saya.current()
 channel = Channel.current()
@@ -249,7 +249,7 @@ class ProstituteHandler(AbstractHandler):
             select(
                 Prostitute.client
             ).where(Prostitute.qq == member.id, Prostitute.group_id == group.id))
-        wallet = await wallet_handler.get_balance(group, member)
+        wallet = await Wallet.get_balance(group, member)
         wallet = wallet if wallet else 0
         client = int(fetch[0][0]) if fetch else 0
         text = f"你现在一共有 {wallet} 硬币，\n一共接了 {client} 个客人。"

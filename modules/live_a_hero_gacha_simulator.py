@@ -23,7 +23,7 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, Setting, LiveAHeroSimulator, UserCalledCount, GachaSimulatorRecord
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.utils import update_user_call_count_plus, get_setting, user_permission_require
-from modules.wallet import wallet_handler
+from modules.wallet import Wallet
 
 saya = Saya.current()
 channel = Channel.current()
@@ -49,50 +49,47 @@ sk_four_stars_location = [(236, 453), (86, 585), (236, 585), (381, 585), (86, 71
                           (86, 849), (236, 849)]
 sk_three_stars_location = [(242, 453), (95, 585), (242, 585), (390, 585), (95, 717), (242, 717), (390, 717),
                            (95, 849), (242, 849)]
-try:
-    three_stars = os.listdir(f"{os.getcwd()}/statics/lah/3/")
-    for i in range(len(three_stars)):
-        three_stars[i] = "/3/" + three_stars[i]
-    four_stars = os.listdir(f"{os.getcwd()}/statics/lah/4/")
-    for i in range(len(four_stars)):
-        four_stars[i] = "/4/" + four_stars[i]
-    five_stars = os.listdir(f"{os.getcwd()}/statics/lah/5/")
-    for i in range(len(five_stars)):
-        five_stars[i] = "/5/" + five_stars[i]
-    three_sk = os.listdir(f"{os.getcwd()}/statics/lah/3_sk/")
-    for i in range(len(three_sk)):
-        three_sk[i] = "/3_sk/" + three_sk[i]
-    four_sk = os.listdir(f"{os.getcwd()}/statics/lah/4_sk/")
-    for i in range(len(four_sk)):
-        four_sk[i] = "/4_sk/" + four_sk[i]
-    three_sk_limited = os.listdir(f"{os.getcwd()}/statics/lah/3_sk_limited/")
-    for i in range(len(three_sk_limited)):
-        three_sk_limited[i] = "/3_sk_limited/" + three_sk_limited[i]
-    four_sk_limited = os.listdir(f"{os.getcwd()}/statics/lah/4_sk_limited/")
-    for i in range(len(four_sk_limited)):
-        four_sk_limited[i] = "/4_sk_limited/" + four_sk_limited[i]
-    three_stars_limited = os.listdir(f"{os.getcwd()}/statics/lah/3_limited/")
-    for i in range(len(three_stars_limited)):
-        three_stars_limited[i] = "/3_limited/" + three_stars_limited[i]
-    four_stars_limited = os.listdir(f"{os.getcwd()}/statics/lah/4_limited/")
-    for i in range(len(four_stars_limited)):
-        four_stars_limited[i] = "/4_limited/" + four_stars_limited[i]
-    five_stars_limited = os.listdir(f"{os.getcwd()}/statics/lah/5_limited/")
-    for i in range(len(five_stars_limited)):
-        five_stars_limited[i] = "/5_limited/" + five_stars_limited[i]
-    four_stars_up = os.listdir(f"{os.getcwd()}/statics/lah/4_up/")
-    for i in range(len(four_stars_up)):
-        four_stars_up[i] = "/4_up/" + four_stars_up[i]
-    four_sk_up = os.listdir(f"{os.getcwd()}/statics/lah/4_sk_up/")
-    for i in range(len(four_sk_up)):
-        four_sk_up[i] = "/4_sk_up/" + four_sk_up[i]
-    five_stars_up = os.listdir(f"{os.getcwd()}/statics/lah/5_up/")
-    for i in range(len(five_stars_up)):
-        five_stars_up[i] = "/5_up/" + five_stars_up[i]
-    with open(f"{os.getcwd()}/statics/lah/hero.json", "r", encoding="utf-8") as r:
-        hero_data = json.loads(r.read())
-except FileNotFoundError as err:
-    print(err)
+three_stars = os.listdir(f"{os.getcwd()}/statics/lah/3/")
+for i in range(len(three_stars)):
+    three_stars[i] = "/3/" + three_stars[i]
+four_stars = os.listdir(f"{os.getcwd()}/statics/lah/4/")
+for i in range(len(four_stars)):
+    four_stars[i] = "/4/" + four_stars[i]
+five_stars = os.listdir(f"{os.getcwd()}/statics/lah/5/")
+for i in range(len(five_stars)):
+    five_stars[i] = "/5/" + five_stars[i]
+three_sk = os.listdir(f"{os.getcwd()}/statics/lah/3_sk/")
+for i in range(len(three_sk)):
+    three_sk[i] = "/3_sk/" + three_sk[i]
+four_sk = os.listdir(f"{os.getcwd()}/statics/lah/4_sk/")
+for i in range(len(four_sk)):
+    four_sk[i] = "/4_sk/" + four_sk[i]
+three_sk_limited = os.listdir(f"{os.getcwd()}/statics/lah/3_sk_limited/")
+for i in range(len(three_sk_limited)):
+    three_sk_limited[i] = "/3_sk_limited/" + three_sk_limited[i]
+four_sk_limited = os.listdir(f"{os.getcwd()}/statics/lah/4_sk_limited/")
+for i in range(len(four_sk_limited)):
+    four_sk_limited[i] = "/4_sk_limited/" + four_sk_limited[i]
+three_stars_limited = os.listdir(f"{os.getcwd()}/statics/lah/3_limited/")
+for i in range(len(three_stars_limited)):
+    three_stars_limited[i] = "/3_limited/" + three_stars_limited[i]
+four_stars_limited = os.listdir(f"{os.getcwd()}/statics/lah/4_limited/")
+for i in range(len(four_stars_limited)):
+    four_stars_limited[i] = "/4_limited/" + four_stars_limited[i]
+five_stars_limited = os.listdir(f"{os.getcwd()}/statics/lah/5_limited/")
+for i in range(len(five_stars_limited)):
+    five_stars_limited[i] = "/5_limited/" + five_stars_limited[i]
+four_stars_up = os.listdir(f"{os.getcwd()}/statics/lah/4_up/")
+for i in range(len(four_stars_up)):
+    four_stars_up[i] = "/4_up/" + four_stars_up[i]
+four_sk_up = os.listdir(f"{os.getcwd()}/statics/lah/4_sk_up/")
+for i in range(len(four_sk_up)):
+    four_sk_up[i] = "/4_sk_up/" + four_sk_up[i]
+five_stars_up = os.listdir(f"{os.getcwd()}/statics/lah/5_up/")
+for i in range(len(five_stars_up)):
+    five_stars_up[i] = "/5_up/" + five_stars_up[i]
+with open(f"{os.getcwd()}/statics/lah/hero.json", "r", encoding="utf-8") as r:
+    hero_data = json.loads(r.read())
 
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
@@ -200,7 +197,7 @@ class LiveAHeroGachaSimulator(AbstractHandler):
         amount = amount if member and group else 0
         limit = -1 if not fetch else fetch[0][1]
         if member and group:
-            wallet = await wallet_handler.get_balance(group, member)
+            wallet = await Wallet.get_balance(group, member)
         else:
             wallet = 1000
         if limit < -1:
@@ -492,7 +489,7 @@ class LiveAHeroGachaSimulator(AbstractHandler):
             output = BytesIO()
             result.save(output, format='png')
             if member and group:
-                await wallet_handler.charge(group, member, amount, "Live a Hero 模拟抽卡")
+                await Wallet.charge(group, member, amount, "Live a Hero 模拟抽卡")
             if not peach_enabled:
                 if member and group:
                     await orm.insert_or_update(
