@@ -6,7 +6,7 @@ import traceback
 from typing import Union
 
 import aiohttp
-from graia.ariadne.model import Friend
+from graia.ariadne.model import Friend, UploadMethod
 from loguru import logger
 from graiax import silkcoder
 from sqlalchemy import select
@@ -69,7 +69,9 @@ class Speak(AbstractHandler):
             if isinstance(voice, str):
                 return MessageItem(MessageChain.create([Plain(text=voice)]), QuoteSource())
             elif isinstance(voice, bytes):
-                voice_element = await app.uploadVoice(await silkcoder.encode(voice))
+                voice_element = await app.uploadVoice(await silkcoder.encode(voice),
+                                                      method=UploadMethod.Group if group and member
+                                                      else UploadMethod.Friend)
                 return MessageItem(MessageChain.create([voice_element]), Normal())
         elif message.asDisplay().startswith("长语音查询 "):
             _, task_id = message.asDisplay().split(" ", maxsplit=1)
