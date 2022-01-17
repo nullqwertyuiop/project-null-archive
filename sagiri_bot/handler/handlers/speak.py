@@ -69,7 +69,9 @@ class Speak(AbstractHandler):
                 if isinstance(voice, str):
                     return MessageItem(MessageChain.create([Plain(text=voice)]), QuoteSource())
                 elif isinstance(voice, bytes):
-                    voice_element = await app.uploadVoice(await silkcoder.encode(voice), method=UploadMethod.Group)
+                    voice_element = await app.uploadVoice(await silkcoder.encode(voice),
+                                                          method=UploadMethod.Group if member and group
+                                                          else UploadMethod.Friend)
                     return MessageItem(MessageChain.create([voice_element]), Normal())
         elif message.asDisplay().startswith("长语音查询 "):
             _, task_id = message.asDisplay().split(" ", maxsplit=1)
