@@ -22,7 +22,7 @@ from sagiri_bot.orm.async_orm import orm
 from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
-from sagiri_bot.utils import update_user_call_count_plus, get_config
+from sagiri_bot.utils import update_user_call_count_plus
 from sagiri_bot.orm.async_orm import Setting, UserCalledCount
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.strategy import Normal, QuoteSource
@@ -65,14 +65,12 @@ class Speak(AbstractHandler):
         if message.asDisplay().startswith("说 "):
             text = ''.join([plain.text for plain in message.get(Plain)])[2:].replace(" ", '，')
             await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-            voice = await Speak.get_voice(app, group.id, text)
-            if isinstance(voice, str):
-                return MessageItem(MessageChain.create([Plain(text=voice)]), QuoteSource())
-            elif isinstance(voice, bytes):
-                voice_element = await app.uploadVoice(await silkcoder.encode(voice),
-                                                      method=UploadMethod.Group if group and member
-                                                      else UploadMethod.Friend)
-                return MessageItem(MessageChain.create([voice_element]), Normal())
+            if voice := await Speak.get_voice(group.id, text):
+                if isinstance(voice, str):
+                    return MessageItem(MessageChain.create([Plain(text=voice)]), QuoteSource())
+                elif isinstance(voice, bytes):
+                    voice_element = await app.uploadVoice(await silkcoder.encode(voice), method=UploadMethod.Group)
+                    return MessageItem(MessageChain.create([voice_element]), Normal())
         elif message.asDisplay().startswith("长语音查询 "):
             _, task_id = message.asDisplay().split(" ", maxsplit=1)
             if query := await Speak.get_long_voice_status(task_id):
@@ -95,7 +93,7 @@ class Speak(AbstractHandler):
             ]), QuoteSource())
 
     @staticmethod
-    async def get_voice(app: Ariadne, group_id: int, text: str) -> Union[str, bytes, None]:
+    async def get_voice(group_id: int, text: str) -> Union[str, bytes, None]:
         if voice_type := await orm.fetchone(select(Setting.voice).where(Setting.group_id == group_id)):
             voice_type = voice_type[0]
             if voice_type != "off":
@@ -122,35 +120,18 @@ class Speak(AbstractHandler):
                     voice = json.loads(resp.to_json_string())["Audio"]
                     return base64.b64decode(voice)
                 except TencentCloudSDKException as err:
+                    if err.get_code() == "UnsupportedOperation.TextTooLong":
+                        return await Speak.get_long_voice(voice_type, text)
                     logger.error(traceback.format_exc())
-                    error_code = err.get_code()
-                    if error_code == "InternalError.InternalError":
-                        return "内部错误，请稍后再试。"
-                    elif error_code == "InvalidParameter.InvalidText":
-                        return "请求文本含有非法字符，请检查您的输入。"
-                    elif error_code == "InvalidParameterValue.InvalidText":
-                        return "请求文本含有非法字符或不含有合法字符，请检查您的输入。"
-                    elif error_code == "LimitExceeded.AccessLimit":
-                        return "请求超过限制频率，请稍后再试。"
-                    elif error_code == "UnsupportedOperation.AccountArrears":
-                        return "账号欠费，请联系机器人管理员。"
-                    elif error_code == "UnsupportedOperation.NoBanlance":
-                        return "账号无余额，请联系机器人管理员。"
-                    elif error_code == "UnsupportedOperation.NoFreeAccount":
-                        return "账号免费额度已用完，请联系机器人管理员。"
-                    elif error_code == "UnsupportedOperation.ServerNotOpen":
-                        return "远端服务器未开通使用，请稍后再试。"
-                    elif error_code == "UnsupportedOperation.TextTooLong":
-                        return await Speak.get_long_voice(app, voice_type, text, group_id)
                     return str(err)
             else:
                 return None
 
     @staticmethod
-    async def get_long_voice(app: Ariadne, voice_type: Union[int, str], text: str, group_id: int):
+    async def get_long_voice(voice_type: Union[int, str], text: str):
         try:
-            user_data = get_config("tencent")
-            cred = credential.Credential(user_data["secretId"], user_data["secretKey"])
+            user_data = config.functions["tencent"]
+            cred = credential.Credential(user_data["secret_id"], user_data["secret_key"])
             httpProfile = HttpProfile()
             httpProfile.endpoint = "tts.tencentcloudapi.com"
             clientProfile = ClientProfile()
@@ -167,9 +148,6 @@ class Speak(AbstractHandler):
             req.from_json_string(json.dumps(params))
             resp = client.CreateTtsTask(req)
             task_id = json.loads(resp.to_json_string())["Data"]["TaskId"]
-            await app.sendGroupMessage(group_id, MessageChain.create([
-                Plain(text=f'已发送长语音合成请求，合成完毕后将自动发送，可发送 "长语音查询 任务ID" 查询合成状态。\n任务 ID：{task_id}')
-            ]))
             while True:
                 status = await Speak.get_long_voice_status(task_id)
                 if status["Data"]["Status"] in (0, 1):
@@ -185,30 +163,13 @@ class Speak(AbstractHandler):
                     return voice
         except TencentCloudSDKException as err:
             logger.error(traceback.format_exc())
-            error_code = err.get_code()
-            if error_code == "InternalError.InternalError":
-                return "内部错误，请稍后再试。"
-            elif error_code == "InvalidParameter.InvalidText":
-                return "请求文本含有非法字符，请检查您的输入。"
-            elif error_code == "InvalidParameterValue.InvalidText":
-                return "请求文本含有非法字符或不含有合法字符，请检查您的输入。"
-            elif error_code == "LimitExceeded.AccessLimit":
-                return "请求超过限制频率，请稍后再试。"
-            elif error_code == "UnsupportedOperation.AccountArrears":
-                return "账号欠费，请联系机器人管理员。"
-            elif error_code == "UnsupportedOperation.NoBanlance":
-                return "账号无余额，请联系机器人管理员。"
-            elif error_code == "UnsupportedOperation.NoFreeAccount":
-                return "账号免费额度已用完，请联系机器人管理员。"
-            elif error_code == "UnsupportedOperation.ServerNotOpen":
-                return "远端服务器未开通使用，请稍后再试。"
             return str(err)
 
     @staticmethod
     async def get_long_voice_status(task_id: str):
         try:
-            user_data = get_config("tencent")
-            cred = credential.Credential(user_data["secretId"], user_data["secretKey"])
+            user_data = config.functions["tencent"]
+            cred = credential.Credential(user_data["secret_id"], user_data["secret_key"])
             httpProfile = HttpProfile()
             httpProfile.endpoint = "tts.tencentcloudapi.com"
             clientProfile = ClientProfile()
