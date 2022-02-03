@@ -76,43 +76,47 @@ class ClowCard(AbstractHandler):
 
     @staticmethod
     async def get_card(member: Member = None, group: Group = None, friend: Friend = None, pool: str = "clow"):
-        cord = {
-            "clow": UsageRecord.clow_card,
-            "sakura": UsageRecord.clow_card,
-            "clear": UsageRecord.clear_card
-        }
-        cord_usage = {
-            "clow": "clow_card",
-            "sakura": "clow_card",
-            "clear": "clear_card"
-        }
-        current_date = int(datetime.today().strftime('%Y%m%d'))
-        usage = 0
-        if group and member:
-            if limit := await orm.fetchall(
-                    select(
-                        Setting.tarot
-                    ).where(Setting.group_id == group.id)):
-                limit = limit[0][0]
-            else:
-                limit = -1
-            if usage := await orm.fetchall(
-                    select(
-                        cord[pool]
-                    ).where(
-                        UsageRecord.group == group.id,
-                        UsageRecord.qq == member.id,
-                        UsageRecord.last_date == current_date)):
-                usage = usage[0][0]
-            else:
-                usage = 0
-            if usage >= limit != -1:
-                return [Plain(text=f"超出本群单日抽取限制 ({limit} 次)。")]
+        # cord = {
+        #     "clow": UsageRecord.clow_card,
+        #     "sakura": UsageRecord.clow_card,
+        #     "clear": UsageRecord.clear_card
+        # }
+        # cord_usage = {
+        #     "clow": "clow_card",
+        #     "sakura": "clow_card",
+        #     "clear": "clear_card"
+        # }
+        # current_date = int(datetime.today().strftime('%Y%m%d'))
+        # usage = 0
+        # if group and member:
+        #     if limit := await orm.fetchall(
+        #             select(
+        #                 Setting.tarot
+        #             ).where(Setting.group_id == group.id)):
+        #         limit = limit[0][0]
+        #     else:
+        #         limit = -1
+        #     if usage := await orm.fetchall(
+        #             select(
+        #                 cord[pool]
+        #             ).where(
+        #                 UsageRecord.group == group.id,
+        #                 UsageRecord.qq == member.id,
+        #                 UsageRecord.last_date == current_date)):
+        #         usage = usage[0][0]
+        #     else:
+        #         usage = 0
+        #     if usage >= limit != -1:
+        #         return [Plain(text=f"超出本群单日抽取限制 ({limit} 次)。")]
         path = f"{os.getcwd()}/statics/clow_cards/clow_cards.json"
         with open(path, 'r', encoding='utf-8') as json_file:
             data = json.load(json_file)
         card_list = os.listdir(f"{os.getcwd()}/statics/clow_cards/{pool}_cards")
+        random.seed(int(datetime.today().strftime('%Y%m%d')
+                        + str(member.id if member else friend.id)
+                        + str(group.id if group else 0)))
         choice = random.choice(card_list)
+        random.seed()
         img_path = f"{os.getcwd()}/statics/clow_cards/{pool}_cards/{choice}"
         chosen = IMG.open(img_path).resize((815, 1800), IMG.ANTIALIAS)
         output = BytesIO()
@@ -124,12 +128,12 @@ class ClowCard(AbstractHandler):
             resp.append(Plain(text=f"\n象征：{data['clow'][choice]['meaning']}")) if data['clow'][choice][
                 'meaning'] else None
             resp.append(Plain(text=f"\n对应：{data['clow'][choice]['poker']}")) if data['clow'][choice]['poker'] else None
-        if group and member:
-            await orm.insert_or_update(
-                UsageRecord,
-                [UsageRecord.qq == member.id, UsageRecord.group == group.id],
-                {"qq": member.id,
-                 "group": group.id,
-                 cord_usage[pool]: usage + 1,
-                 "last_date": current_date})
+        # if group and member:
+        #     await orm.insert_or_update(
+        #         UsageRecord,
+        #         [UsageRecord.qq == member.id, UsageRecord.group == group.id],
+        #         {"qq": member.id,
+        #          "group": group.id,
+        #          cord_usage[pool]: usage + 1,
+        #          "last_date": current_date})
         return resp

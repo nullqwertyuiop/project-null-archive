@@ -1,13 +1,12 @@
 import re
 import random
 
-from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.element import Plain
 from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
+from graia.ariadne.event.message import Group, Member, GroupMessage
 
 from sagiri_bot.utils import get_setting
 from sagiri_bot.orm.async_orm import Setting
@@ -25,15 +24,9 @@ channel.author("SAGIRI-kawaii")
 channel.description("一个简单的投骰子插件，发送 `{times}d{range}` 即可")
 
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
-async def dice_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await Dice.handle(app, message, friend=friend):
-        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
-
-
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def dice_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await Dice.handle(app, message, group=group, member=member):
+async def dice(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    if result := await Dice.handle(app, message, group, member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -45,12 +38,10 @@ class Dice(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
-                     member: Member = None, friend: Friend = None):
+    async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
         if re.match(r"[0-9]+d[0-9]+", message.asDisplay()):
-            if member and group:
-                if not await get_setting(group.id, Setting.dice):
-                    return MessageItem(MessageChain.create([Plain(text="骰子功能尚未开启。")]), QuoteSource())
+            if not await get_setting(group.id, Setting.dice):
+                return MessageItem(MessageChain.create([Plain(text="骰子功能尚未开启哟~")]), QuoteSource())
             times, max_point = message.asDisplay().strip().split('d')
             times, max_point = int(times), int(max_point)
             if times > 100:

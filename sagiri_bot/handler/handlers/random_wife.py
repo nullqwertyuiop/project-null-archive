@@ -1,4 +1,5 @@
 import random
+from datetime import datetime
 
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
@@ -46,14 +47,19 @@ class RandomWife(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
         if message.asDisplay() in ("来个老婆", "随机老婆"):
-            return await RandomWife.get_random_wife()
+            return await RandomWife.get_random_wife(group=group, member=member, friend=friend)
 
     @staticmethod
     @frequency_limit_require_weight_free(4)
-    async def get_random_wife():
+    async def get_random_wife(group: Group, member: Member, friend: Friend):
+        random.seed(int(datetime.today().strftime('%Y%m%d')
+                        + str(member.id if member else friend.id)
+                        + str(group.id if group else 0)))
+        index = random.randint(1, 100000)
+        random.seed()
         return MessageItem(
             MessageChain.create([
-                Image(url=f"https://www.thiswaifudoesnotexist.net/example-{random.randint(1, 100000)}.jpg")
+                Image(url=f"https://www.thiswaifudoesnotexist.net/example-{index}.jpg")
             ]),
             QuoteSource()
         )

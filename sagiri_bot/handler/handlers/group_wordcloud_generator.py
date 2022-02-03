@@ -121,7 +121,7 @@ class GroupWordCloudGenerator(AbstractHandler):
         # print(mask.shape)
         wc = WordCloud(
             font_path=f'statics/fonts/STKAITI.TTF',
-            background_color=(200, 200, 200),
+            background_color='white',
             # max_words=500,
             max_font_size=100,
             width=1920,

@@ -53,6 +53,13 @@ def frequency_limit_require_weight_free(weight: int):
                     group_id = i.id
                 if isinstance(i, Friend):
                     return func(*args, **kwargs)
+            for _, i in kwargs.items():
+                if isinstance(i, Member):
+                    member_id = i.id
+                if isinstance(i, Group):
+                    group_id = i.id
+                if isinstance(i, Friend):
+                    return func(*args, **kwargs)
             if member_id == -1 or group_id == -1 or not await get_setting(group_id, Setting.frequency_limit):
                 if asyncio.iscoroutinefunction(func):
                     return await func(*args, **kwargs)
@@ -87,6 +94,11 @@ def switch(response_administrator: bool = False):
                     member_id = i.id
                 if isinstance(i, Group):
                     group_id = i.id
+            for _, i in kwargs.items():
+                if isinstance(i, Member):
+                    member_id = i.id
+                if isinstance(i, Group):
+                    group_id = i.id
             if group_id != -1 and not await get_setting(group_id, Setting.switch):
                 if not response_administrator or not await user_permission_require(group_id, member_id, 2):
                     return None
@@ -104,6 +116,11 @@ def blacklist():
             member_id = -1
             group_id = -1
             for i in args:
+                if isinstance(i, Member):
+                    member_id = i.id
+                if isinstance(i, Group):
+                    group_id = i.id
+            for _, i in kwargs.items():
                 if isinstance(i, Member):
                     member_id = i.id
                 if isinstance(i, Group):

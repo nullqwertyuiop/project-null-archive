@@ -3,6 +3,7 @@ import re
 from io import BytesIO
 from typing import Union
 
+import aiohttp
 from PIL import Image as IMG
 from graia.ariadne.app import Ariadne, Friend
 from graia.ariadne.event.message import Group, Member, FriendMessage
@@ -89,8 +90,8 @@ class ImageToURLHandler(AbstractHandler):
             # async with aiohttp.ClientSession() as session:
             #     async with session.get(url=image.url) as resp:
             #         img_content = await resp.read()
-            # img_suffix = image.imageId.split('.').pop()
-            img_suffix = re.compile('"imageId": "{.*}.(.{1,5})"').search(image.asPersistentString()).group(1)
+            img_suffix = image.id.split('.').pop()
+            # img_suffix = re.compile('"imageId": "{.*}.(.{1,5})"').search(image.asPersistentString()).group(1)
             img_suffix = img_suffix if img_suffix != 'mirai' else 'png'
             img = IMG.open(BytesIO(await image.get_bytes()))
             save_path = os.path.join(webroot, f"{image.uuid}.{img_suffix}")

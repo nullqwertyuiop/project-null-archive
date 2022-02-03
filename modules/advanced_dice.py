@@ -26,13 +26,13 @@ channel.description("高级(不)的骰子")
 
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
-async def dice_handler(app: Ariadne, message: MessageChain, friend: Friend):
+async def advanced_dice_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await AdvancedDice.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def dice_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+async def advanced_dice_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await AdvancedDice.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 

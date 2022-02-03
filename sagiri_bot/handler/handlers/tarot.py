@@ -58,34 +58,38 @@ class Tarot(AbstractHandler):
             return None
 
     @staticmethod
-    async def get_tarot(member: Member = None, group: Group = None):
-        current_date = int(datetime.today().strftime('%Y%m%d'))
-        usage = 0
-        if member and group:
-            if limit := await orm.fetchall(
-                    select(
-                        Setting.tarot
-                    ).where(Setting.group_id == group.id)):
-                limit = limit[0][0]
-            else:
-                limit = -1
-            if usage := await orm.fetchall(
-                    select(
-                        UsageRecord.tarot
-                    ).where(
-                        UsageRecord.group == group.id,
-                        UsageRecord.qq == member.id,
-                        UsageRecord.last_date == current_date
-                    )):
-                usage = usage[0][0]
-            else:
-                usage = 0
-            if usage >= limit != -1:
-                return MessageItem(MessageChain.create([
-                    Plain(text=f"超出本群单日抽取限制 ({limit} 次)。")
-                ]), QuoteSource())
+    async def get_tarot(member: Member = None, group: Group = None, friend: Friend = None):
+        # current_date = int(datetime.today().strftime('%Y%m%d'))
+        # usage = 0
+        # if member and group:
+        #     if limit := await orm.fetchall(
+        #             select(
+        #                 Setting.tarot
+        #             ).where(Setting.group_id == group.id)):
+        #         limit = limit[0][0]
+        #     else:
+        #         limit = -1
+        #     if usage := await orm.fetchall(
+        #             select(
+        #                 UsageRecord.tarot
+        #             ).where(
+        #                 UsageRecord.group == group.id,
+        #                 UsageRecord.qq == member.id,
+        #                 UsageRecord.last_date == current_date
+        #             )):
+        #         usage = usage[0][0]
+        #     else:
+        #         usage = 0
+        #     if usage >= limit != -1:
+        #         return MessageItem(MessageChain.create([
+        #             Plain(text=f"超出本群单日抽取限制 ({limit} 次)。")
+        #         ]), QuoteSource())
+        random.seed(int(datetime.today().strftime('%Y%m%d')
+                        + str(member.id if member else friend.id)
+                        + str(group.id if group else 0)))
         card, filename = Tarot.get_random_tarot()
         dir = random.choice(['normal', 'reverse'])
+        random.seed()
         type = '正位' if dir == 'normal' else '逆位'
         content = f"{card['name']} ({card['name-en']}) {type}\n牌意：{card['meaning'][dir]}"
         elements = []
@@ -93,14 +97,14 @@ class Tarot(AbstractHandler):
         if filename and os.path.exists(img_path):
             elements.append(Image(path=img_path))
         elements.append(Plain(text=content))
-        if member and group:
-            await orm.insert_or_update(
-                UsageRecord,
-                [UsageRecord.qq == member.id, UsageRecord.group == group.id],
-                {"qq": member.id,
-                 "group": group.id,
-                 "tarot": usage + 1,
-                 "last_date": current_date})
+        # if member and group:
+        #     await orm.insert_or_update(
+        #         UsageRecord,
+        #         [UsageRecord.qq == member.id, UsageRecord.group == group.id],
+        #         {"qq": member.id,
+        #          "group": group.id,
+        #          "tarot": usage + 1,
+        #          "last_date": current_date})
         return MessageItem(MessageChain.create(elements), QuoteSource())
 
     @staticmethod

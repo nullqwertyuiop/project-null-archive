@@ -88,25 +88,23 @@ class GarbageTranslation(AbstractHandler):
         else:
             translated = msg
         last_lang = ""
+        session = aiohttp.ClientSession(
+            cookies=GarbageTranslation.cookies,
+            headers=GarbageTranslation.headers
+        )
         for i in range(times):
             this_lang = random.choice(GarbageTranslation.lang)
             while this_lang == last_lang:
                 this_lang = random.choice(GarbageTranslation.lang)
             url = f'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl={this_lang}&q={translated}'
             try:
-                async with aiohttp.ClientSession(
-                        cookies=GarbageTranslation.cookies,
-                        headers=GarbageTranslation.headers) as session:
-                    async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
-                        result = await resp.json()
+                async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
+                    result = await resp.json()
             except json.decoder.JSONDecodeError:
                 await GarbageTranslation.update_cookie()
                 try:
-                    async with aiohttp.ClientSession(
-                            cookies=GarbageTranslation.cookies,
-                            headers=GarbageTranslation.headers) as session:
-                        async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
-                            result = await resp.json()
+                    async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
+                        result = await resp.json()
                 except:
                     return "出错，请检查您的输入内容是否过长。"
             last_lang = this_lang
@@ -121,19 +119,13 @@ class GarbageTranslation(AbstractHandler):
                     continue
         url = f'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=zh&q={translated}'
         try:
-            async with aiohttp.ClientSession(
-                    cookies=GarbageTranslation.cookies,
-                    headers=GarbageTranslation.headers) as session:
-                async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
-                    result = await resp.json()
+            async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
+                result = await resp.json()
         except json.decoder.JSONDecodeError:
             await GarbageTranslation.update_cookie()
             try:
-                async with aiohttp.ClientSession(
-                        cookies=GarbageTranslation.cookies,
-                        headers=GarbageTranslation.headers) as session:
-                    async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
-                        result = await resp.json()
+                async with session.get(url=url, headers=GarbageTranslation.headers) as resp:
+                    result = await resp.json()
             except:
                 return "出错，请检查您的输入内容是否过长。"
         translated = ""
@@ -146,9 +138,12 @@ class GarbageTranslation(AbstractHandler):
 
     @staticmethod
     async def update_cookie():
+        session = aiohttp.ClientSession(
+            headers=GarbageTranslation.headers
+        )
         try:
-            GarbageTranslation.cookies = requests.Session().get('https://translate.google.com',
-                                                                headers=GarbageTranslation.headers).cookies
+            async with session.get('https://translate.google.com') as resp:
+                GarbageTranslation.cookies = resp.cookies
             return "更新 Cookie 成功。"
         except:
             return "更新 Cookie 失败。"

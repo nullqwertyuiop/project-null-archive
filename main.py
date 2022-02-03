@@ -61,17 +61,17 @@ async def friend_message_listener(message: MessageChain, friend: Friend):
     logger.info(f"收到来自好友 <{friend.nickname}> 的消息：{message_text_log}")
 
 
-@bcc.receiver("TempMessage")
-async def temp_message_listener(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    message_text_log = message.asDisplay().replace("\n", "\\n")
-    logger.info(f"收到来自群 <{group.name}> 中成员 <{member.name}> 的临时消息：{message_text_log}")
-    try:
-        await app.sendTempMessage(group=group, target=member,
-                                  message=MessageChain.create([
-                                      Plain(text='本项目暂时无法响应临时消息，请见谅。')
-                                  ]))
-    except Exception as e:
-        logger.error(e)
+# @bcc.receiver("TempMessage")
+# async def temp_message_listener(app: Ariadne, message: MessageChain, group: Group, member: Member):
+#     message_text_log = message.asDisplay().replace("\n", "\\n")
+#     logger.info(f"收到来自群 <{group.name}> 中成员 <{member.name}> 的临时消息：{message_text_log}")
+#     try:
+#         await app.sendTempMessage(group=group, target=member,
+#                                   message=MessageChain.create([
+#                                       Plain(text='本项目暂时无法响应临时消息，请见谅。')
+#                                   ]))
+#     except Exception as e:
+#         logger.error(e)
 
 
 @logger.catch

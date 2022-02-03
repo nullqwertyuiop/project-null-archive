@@ -388,28 +388,6 @@ class AdvancedSetu(Base):
     process = Column(String(length=10), nullable=False, default="noProcess")
 
 
-class GNNUCredit(Base):
-    """ 赣南师范大学学分 """
-    __tablename__ = "gnnu_credit"
-
-    id = Column(BIGINT, primary_key=True)
-    name = Column(String(length=10), nullable=False, default="0")
-    qq = Column(BIGINT, nullable=False, default=0)
-    bind = Column(Boolean, default=False)
-
-
-class GNNUCreditHistory(Base):
-    """ 赣南师范大学学分记录 """
-    __tablename__ = "gnnu_credit_history"
-
-    id = Column(Integer, primary_key=True)
-    student = Column(BIGINT, nullable=False, default=0)
-    date = Column(String(length=32), nullable=False, default="0")
-    record = Column(String(length=10), nullable=False, default="0")
-    reason = Column(String(length=4000), nullable=False, default="0")
-    validated = Column(Boolean, nullable=False, default=False)
-
-
 class PermanentBlackList(Base):
     """ 永久黑名单 """
     __tablename__ = "permanent_black_list"

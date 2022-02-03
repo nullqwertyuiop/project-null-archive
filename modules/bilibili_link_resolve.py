@@ -45,7 +45,7 @@ class BilibiliLinkResolve(AbstractHandler):
     __name__ = "BilibiliLinkResolve"
     __description__ = "一个可以解析BiliBili小程序的Handler"
     __usage__ = "当群中有人分享时自动触发"
-    fall_back_config = "%封面%\n【标题】%标题%\n【UP主】%up%\n【播放量】%播放量%\n【点赞量】%点赞量%\n【简介】%简介%"
+    fallback_config = "%封面%\n【标题】%标题%\n【UP主】%up%\n【播放量】%播放量%\n【点赞量】%点赞量%\n【简介】%简介%"
 
     @staticmethod
     @switch()
@@ -147,9 +147,9 @@ class BilibiliLinkResolve(AbstractHandler):
             try:
                 config = Config.group_config[group.id]["bilibili_link_resolve"]
             except KeyError:
-                config = BilibiliLinkResolve.fall_back_config
+                config = BilibiliLinkResolve.fallback_config
         else:
-            config = BilibiliLinkResolve.fall_back_config
+            config = BilibiliLinkResolve.fallback_config
         data = info["data"]
         chain_list = []
 
