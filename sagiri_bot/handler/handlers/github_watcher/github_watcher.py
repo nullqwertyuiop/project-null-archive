@@ -34,16 +34,6 @@ class GithubWatcher:
     __description__ = "Github 订阅 Handler"
     __usage__ = "None"
     cached = {}
-    '''
-    cached = {
-        ("owner", "repo"): {
-            "group": [114514],
-            "friend": [1919810],
-            "last_id": 1145141919,
-            "enabled": True
-        }
-    }
-    '''
     if config.functions['github']['username'] != "username" and config.functions['github']['token'] != 'token':
         _auth = True
         session = aiohttp.ClientSession(auth=BasicAuth(

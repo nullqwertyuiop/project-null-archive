@@ -1,6 +1,6 @@
 from typing import Optional
 
-from graia.ariadne.message.element import Image
+from graia.ariadne.message.element import Image, Plain, At, Quote, AtAll, Face, Poke
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
@@ -57,7 +57,8 @@ class Repeater(AbstractHandler):
                         Repeater.group_repeat[group.id]["count"] = count
                         if message.has(Image) and not await get_setting(group.id, Setting.trusted):
                             return None
-                        return MessageItem(message.asSendable(), Normal())
+                        msg = message.include(Plain, Image, At, Quote, AtAll, Face, Poke)
+                        return MessageItem(msg.asSendable(), Normal())
                     else:
                         Repeater.group_repeat[group.id]["count"] = count
                         return None

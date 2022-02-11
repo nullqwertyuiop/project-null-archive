@@ -20,7 +20,7 @@ saya = Saya.current()
 channel = Channel.current()
 
 channel.name("RandomFursona")
-channel.author("nullqwertyuiop")
+channel.author("nullqwertyuiop, Sword")
 channel.description("随机生成兽设插件，在群中发送 `随机兽设` 即可")
 
 

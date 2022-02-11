@@ -1,12 +1,13 @@
 import yaml
-import traceback
 from os import environ
 from loguru import logger
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, update, insert, delete
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, BLOB, BIGINT, Text
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, BLOB, BIGINT
+
+from .adapter import get_adapter
 
 yaml.warnings({'YAMLLoadWarning': False})
 environ['NLS_LANG'] = 'AMERICAN_AMERICA.AL32UTF8'
@@ -34,9 +35,8 @@ class AsyncEngine:
     def __init__(self, db_link):
         self.engine = create_async_engine(
             db_link,
-            echo=False,
-            # pool_size=40,
-            # max_overflow=60
+            **get_adapter(db_link),
+            echo=False
         )
 
     async def execute(self, sql, **kwargs):

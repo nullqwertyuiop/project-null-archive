@@ -1,9 +1,10 @@
 alembic
 bs4
-graia-ariadne
+graia-ariadne==0.5.3-pre1
 graia-broadcast
 graia-saya
 graiax-silkcoder
+graia-scheduler
 imageio
 jieba
 matplotlib
@@ -21,3 +22,4 @@ beautifulsoup4
 numpy
 python-dateutil
 pydantic
+youtube-dl
