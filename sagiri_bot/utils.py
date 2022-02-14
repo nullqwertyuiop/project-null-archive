@@ -22,6 +22,7 @@ from graia.ariadne.message.element import Plain, Image
 from graia.ariadne.event.message import Group, Member, Friend
 from sqlalchemy.exc import IntegrityError
 
+from sagiri_bot.orm import orm_cache
 from sagiri_bot.orm.async_orm import orm
 from sagiri_bot.config import GlobalConfig
 from sagiri_bot.orm.async_orm import Setting, UserPermission, UserCalledCount, FunctionCalledRecord
@@ -69,10 +70,15 @@ def get_config(config: str):
 async def get_setting(group: Union[Group, int], setting) -> Union[bool, str]:
     if isinstance(group, Group):
         group = group.id
-    if result := await orm.fetchone(select(setting).where(Setting.group_id == group)):
-        return result[0]
-    else:
-        raise ValueError(f"未找到 {group} -> {str(setting)} 结果！请检查数据库！")
+    setting = str(setting).split(".", maxsplit=1)[1]
+    # if result := await orm.fetchone(select(setting).where(Setting.group_id == group)):
+    #     return result[0]
+    # else:
+    #     raise ValueError(f"未找到 {group} -> {str(setting)} 结果！请检查数据库！")
+    try:
+        return orm_cache[group][setting]
+    except KeyError:
+        raise KeyError(f"未找到 {group} -> {str(setting)} 结果！请检查 ORM 缓存！")
 
 
 async def update_user_call_count_plus(

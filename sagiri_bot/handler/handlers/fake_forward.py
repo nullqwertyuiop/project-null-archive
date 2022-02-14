@@ -24,7 +24,7 @@ channel = Channel.current()
 
 channel.name("FakeForward")
 channel.author("SAGIRI-kawaii")
-channel.description("一个简单的投骰子插件，发送 `{times}d{range}` 即可")
+channel.description("一个生成转发消息的插件，发送 '/fake [@目标] [内容]' 即可")
 
 
 # @channel.use(ListenerSchema(listening_events=[GroupMessage]))

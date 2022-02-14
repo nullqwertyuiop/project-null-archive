@@ -2,6 +2,7 @@ import yaml
 from os import environ
 from loguru import logger
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import OperationalError
 from sqlalchemy import select, update, insert, delete
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -47,6 +48,7 @@ class AsyncEngine:
                 return result
             except Exception as e:
                 await session.rollback()
+                # await session.close()
                 raise e
 
     async def fetchall(self, sql):
@@ -125,6 +127,16 @@ class AsyncORM(AsyncEngine):
 
     async def delete(self, table, condition):
         return await self.execute(delete(table).where(*condition))
+
+    async def init_check(self) -> bool:
+        for table in Base.__subclasses__():
+            try:
+                await self.fetchone(select(table))
+            except OperationalError:
+                async with self.engine.begin() as conn:
+                    await conn.run_sync(table.__table__.create(self.engine))
+                return False
+        return True
 
 
 orm = AsyncORM(DB_LINK)

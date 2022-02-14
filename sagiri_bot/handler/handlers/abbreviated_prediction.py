@@ -1,4 +1,3 @@
-import re
 import aiohttp
 
 from graia.saya import Saya, Channel
@@ -8,7 +7,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.parser.twilight import Twilight, Sparkle
-from graia.ariadne.message.parser.pattern import RegexMatch, FullMatch
+from graia.ariadne.message.parser.twilight import RegexMatch, FullMatch
 
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.strategy import QuoteSource
@@ -70,21 +69,21 @@ class AbbreviatedPrediction(AbstractHandler):
             async with session.post(url=url, headers=headers, data=data) as resp:
                 res = await resp.json()
 
-        result = "可能的结果:\n\n"
+        result = "可能的结果:"
         has_result = False
         for i in res:
             if "trans" in i:
                 if i["trans"]:
                     has_result = True
-                    result += f"{i['name']} => {'，'.join(i['trans'])}\n\n"
+                    result += f"\n{i['name']} => {'，'.join(i['trans'])}"
                 else:
-                    result += f"{i['name']} => 没找到结果！\n\n"
+                    result += f"\n{i['name']} => 没找到结果！"
             else:
                 if i["inputting"]:
                     has_result = True
-                    result += f"{i['name']} => {'，'.join(i['inputting'])}\n\n"
+                    result += f"\n{i['name']} => {'，'.join(i['inputting'])}"
                 else:
-                    result += f"{i['name']} => 没找到结果！\n\n"
+                    result += f"\n{i['name']} => 没找到结果！"
 
         return MessageItem(
             message=MessageChain.create([Plain(text=result if has_result else "没有找到结果哦~")]),

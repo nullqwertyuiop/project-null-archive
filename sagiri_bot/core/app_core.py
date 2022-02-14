@@ -15,6 +15,7 @@ from graia.saya.channel import Channel
 from graia.ariadne.model import MiraiSession
 from graia.ariadne.adapter import DefaultAdapter
 from graia.saya.builtins.broadcast import BroadcastBehaviour
+from sqlalchemy.exc import InternalError
 
 try:
     from graia.scheduler import GraiaScheduler
@@ -71,7 +72,6 @@ class AppCore(object):
                         account=config.bot_qq
                     ),
                 )
-
             )
             self.__saya = Saya(self.__bcc)
             self.__saya.install_behaviours(BroadcastBehaviour(self.__bcc))
@@ -142,7 +142,10 @@ class AppCore(object):
         """ 机器人启动初始化 """
         self.config_check()
         try:
-            await orm.create_all()
+            try:
+                await orm.init_check()
+            except (AttributeError, InternalError):
+                await orm.create_all()
             if not os.path.exists(f"{os.getcwd()}/alembic"):
                 logger.info("未检测到alembic目录，进行初始化")
                 os.system("alembic init alembic")
@@ -151,7 +154,7 @@ class AppCore(object):
                 with open(f"{os.getcwd()}/alembic/env.py", "w") as w:
                     w.write(alembic_env_py_content)
                 logger.warning(f"请前往更改 {os.getcwd()}/alembic.ini 文件，将其中的 sqlalchemy.url 替换为自己的数据库url（不需注明引擎）后重启机器人")
-                exit()
+                exit(0)
             if not os.path.exists(f"{os.getcwd()}/alembic/versions"):
                 os.mkdir(f"{os.getcwd()}/alembic/versions")
             os.system("alembic revision --autogenerate -m 'update'")
@@ -187,7 +190,7 @@ class AppCore(object):
             listener.start()
         except:
             logger.error(traceback.format_exc())
-            exit()
+            exit(0)
 
     @staticmethod
     def dict_check(dictionary: dict, indent: int = 4) -> None:
@@ -210,7 +213,7 @@ class AppCore(object):
             value = self.__config.__getattribute__(key)
             if key in required_key and key == value:
                 logger.error(f"Required initial value not changed detected: {key} - {value}")
-                exit()
+                exit(0)
             elif isinstance(value, dict):
                 logger.success(f"{key}:")
                 self.dict_check(value)

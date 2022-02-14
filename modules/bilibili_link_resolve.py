@@ -52,43 +52,84 @@ class BilibiliLinkResolve(AbstractHandler):
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
-        if re.match(".*((http:|https:\/\/)?([^.]+\.)?bilibili\.com\/video\/(BV|bv).*)", message.asDisplay()):
+        if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
+                               message.asDisplay()):
             if member and group:
                 if not await get_setting(group.id, Setting.bilibili_app_parse):
                     return None
-            bv = message.asDisplay().split("?")[0].split("/")[-1]
+            bv = "bv" + match[0]
             av = BilibiliLinkResolve.bv_to_av(bv)
             info = await BilibiliLinkResolve.get_info(av)
             return MessageItem(
                 await BilibiliLinkResolve.generate_messagechain(info, group),
                 QuoteSource()
             )
-        elif re.match(".*(http:|https:\/\/)?[^.]+\.bilibili\.com\/video\/(AV|av).*", message.asDisplay()):
+        elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
+                                 message.asDisplay()):
             if member and group:
                 if not await get_setting(group.id, Setting.bilibili_app_parse):
                     return None
-            av = message.asDisplay().split("?")[0].split("/")[-1]
-            av = int(av[2:])
+            av = match[0]
             info = await BilibiliLinkResolve.get_info(av)
             return MessageItem(
                 await BilibiliLinkResolve.generate_messagechain(info, group),
                 QuoteSource()
             )
-        elif xml := message.get(Xml):
-            xml = xml[0].xml
-            if url := re.compile(".*url=\"((http:|https:\/\/)?[^.]+\.bilibili\.com\/video\/(AV|av).*)\" .*").search(xml):
-                if member and group:
-                    if not await get_setting(group.id, Setting.bilibili_app_parse):
-                        return None
-                url = url.group(1).split(" ", maxsplit=1)[0]
-                av = url.split("?")[0].split("/")[-1]
-                av = int(av[2:])
+        elif match := re.findall("((?:http:|https:\/\/)?(?:[^.]+\.)?b23\.tv\/[\w\d]+)", message.asDisplay()):
+            if member and group:
+                if not await get_setting(group.id, Setting.bilibili_app_parse):
+                    return None
+            match = match[0]
+            if not (match.startswith("http://") or match.startswith("https://")):
+                match = "https://" + match
+            async with aiohttp.ClientSession(headers=None) as session:
+                async with session.get(match) as res:
+                    if res.status == 200:
+                        link = str(res.url)
+            if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
+                                   link):
+                bv = "bv" + match[0]
+                av = BilibiliLinkResolve.bv_to_av(bv)
                 info = await BilibiliLinkResolve.get_info(av)
                 return MessageItem(
                     await BilibiliLinkResolve.generate_messagechain(info, group),
                     QuoteSource()
                 )
-            elif url := re.compile(".*url=\"((http:|https:\/\/)?[^.]+\.bilibili\.com\/video\/(BV|bv).*)\" .*").search(xml):
+            elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
+                                     link):
+                av = match[0]
+                info = await BilibiliLinkResolve.get_info(av)
+                return MessageItem(
+                    await BilibiliLinkResolve.generate_messagechain(info, group),
+                    QuoteSource()
+                )
+        elif xml := message.get(Xml):
+            xml = xml[0].xml
+            if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
+                                   message.asDisplay()):
+                if member and group:
+                    if not await get_setting(group.id, Setting.bilibili_app_parse):
+                        return None
+                bv = "bv" + match[0]
+                av = BilibiliLinkResolve.bv_to_av(bv)
+                info = await BilibiliLinkResolve.get_info(av)
+                return MessageItem(
+                    await BilibiliLinkResolve.generate_messagechain(info, group),
+                    QuoteSource()
+                )
+            elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
+                                     message.asDisplay()):
+                if member and group:
+                    if not await get_setting(group.id, Setting.bilibili_app_parse):
+                        return None
+                av = match[0]
+                info = await BilibiliLinkResolve.get_info(av)
+                return MessageItem(
+                    await BilibiliLinkResolve.generate_messagechain(info, group),
+                    QuoteSource()
+                )
+            elif url := re.compile(".*url=\"((http:|https:\/\/)?[^.]+\.bilibili\.com\/video\/(BV|bv).*)\" .*").search(
+                    xml):
                 if member and group:
                     if not await get_setting(group.id, Setting.bilibili_app_parse):
                         return None
@@ -100,6 +141,34 @@ class BilibiliLinkResolve(AbstractHandler):
                     await BilibiliLinkResolve.generate_messagechain(info, group),
                     QuoteSource()
                 )
+            elif match := re.findall("((?:http:|https:\/\/)?(?:[^.]+\.)?b23\.tv\/[\w\d]+)", message.asDisplay()):
+                if member and group:
+                    if not await get_setting(group.id, Setting.bilibili_app_parse):
+                        return None
+                match = match[0]
+                if not (match.startswith("http://") or match.startswith("https://")):
+                    match = "https://" + match
+                async with aiohttp.ClientSession(headers=None) as session:
+                    async with session.get(match) as res:
+                        if res.status == 200:
+                            link = str(res.url)
+                if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
+                                       link):
+                    bv = "bv" + match[0]
+                    av = BilibiliLinkResolve.bv_to_av(bv)
+                    info = await BilibiliLinkResolve.get_info(av)
+                    return MessageItem(
+                        await BilibiliLinkResolve.generate_messagechain(info, group),
+                        QuoteSource()
+                    )
+                elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
+                                         link):
+                    av = match[0]
+                    info = await BilibiliLinkResolve.get_info(av)
+                    return MessageItem(
+                        await BilibiliLinkResolve.generate_messagechain(info, group),
+                        QuoteSource()
+                    )
         else:
             return None
 

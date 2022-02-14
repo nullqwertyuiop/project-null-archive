@@ -28,6 +28,15 @@ functions:
   github:
     username: username
     token: token
+  pica:
+    username: username
+    password: password
+    download_cache: true
+    search_cache: true
+    daily_download_limit: 1
+    daily_search_limit: 1
+    daily_random_limit: 1
+    daily_rank_limit: 1
   twitter:
     bearer: bearer
   riddle:
@@ -42,6 +51,14 @@ log_related:
 # 数据相关
 data_related:
   lolicon_image_cache: true
+  lolicon_data_cache: true
   network_data_cache: true
   automatic_update: false
   data_retention: true
+
+# 数据库相关
+database_related:
+  mysql:
+    disable_pooling: false
+    pool_size: 40
+    max_overflow: 60

@@ -6,24 +6,24 @@ from graia.ariadne.model import MemberPerm
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from .github_watcher import GithubWatcher
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
-from sagiri_bot.message_sender.strategy import QuoteSource, Normal
+from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.utils import user_permission_require
+from .github_watcher import GithubWatcher
 
 saya = Saya.current()
 channel = Channel.current()
 
 channel.name("GithubWatcher")
 channel.author("nullqwertyuiop")
-channel.description("/github-watch enable [3级权限]\n"
-                    "/github-watch disable [3级权限]\n"
-                    "/github-watch add {repo} [repo]+ [2级或管理员权限]\n"
-                    "/github-watch remove {repo} [repo]+ [2级或管理员权限]\n"
-                    "/github-watch check [任何人]\n"
+channel.description("/github-watch enable [3级权限]"
+                    "/github-watch disable [3级权限]"
+                    "/github-watch add {repo} [repo]+ [2级或管理员权限]"
+                    "/github-watch remove {repo} [repo]+ [2级或管理员权限]"
+                    "/github-watch check [任何人]"
                     "/github-watch cache {update/store} [2级或管理员权限]")
 
 
@@ -48,10 +48,6 @@ class GithubWatcherEntryPoint(AbstractHandler):
     @switch()
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
-        """
-        说明：
-            为了满足 signature 不择手段
-        """
         pass
 
     @staticmethod
