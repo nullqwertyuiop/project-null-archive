@@ -17,3 +17,5 @@ config.yaml
 *.db
 *.log
 alembic.ini
+sagiri_bot/handler/handlers/github_watcher/watcher_data.json
+sagiri_bot/handler/handlers/github_watcher/watcher_data.json
