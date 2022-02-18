@@ -29,6 +29,8 @@ def get_config(config: str):
 
 
 DB_LINK = get_config("db_link")
+
+
 # DB_LINK = "sqlite+aiosqlite:///data.db"
 
 
@@ -480,6 +482,16 @@ class LoliconData(Base):
     upload_date = Column(DateTime, nullable=False)
     original_url = Column(String(length=200), nullable=False)
 
+
+class InviteData(Base):
+    """ 邀请 """
+    __tablename__ = "invite_data"
+
+    id = Column(Integer, primary_key=True)
+    group_id = Column(BIGINT, nullable=False, default=0)
+    supplicant_id = Column(BIGINT, nullable=False, default=0)
+    time = Column(DateTime, nullable=False)
+    status = Column(Boolean, nullable=False, default=True)
 
 # class SchedulerTasks(Base):
 #     """ 计划任务 """

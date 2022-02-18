@@ -113,7 +113,10 @@ class Command(AbstractHandler):
             env = "好友"
         else:
             return None
-        resp = [Plain(text="[帮助]")]
+        resp = [
+            Plain(text="**帮助功能将进行重大改动，本帮助页暂时停止更新**\n"),
+            Plain(text="[帮助]")
+        ]
         if not content:
             resp.append(Plain(text=f"\n{env}环境下可用的指令有："))
             print(commands)
