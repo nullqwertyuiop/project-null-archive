@@ -1,5 +1,8 @@
+import asyncio
+import threading
 import time
 import aiohttp
+from graia.ariadne.message.parser.twilight import Twilight, Sparkle, FullMatch
 from graia.ariadne.model import Friend
 from loguru import logger
 
@@ -15,7 +18,7 @@ from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessa
 from sqlalchemy import select
 
 from modules.wallet import Wallet
-from sagiri_bot.utils import get_setting
+from sagiri_bot.utils import group_setting, HelpPage, HelpPageElement
 from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.message_sender.strategy import Normal, QuoteSource
@@ -38,7 +41,12 @@ config = core.get_config()
 proxy = config.proxy if config.proxy != "proxy" else ''
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[Twilight(Sparkle([FullMatch("搜图")]))]
+    )
+)
 async def image_searcher(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await ImageSearch.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -58,7 +66,7 @@ class ImageSearch(AbstractHandler):
         if message.asDisplay() in ("搜图", "以图搜图", "搜圖", "以圖搜圖"):
             if member and group:
                 await update_user_call_count_plus(group, member, UserCalledCount.search, "search")
-                if not await get_setting(group.id, Setting.img_search):
+                if not await group_setting.get_setting(group.id, Setting.img_search):
                     return MessageItem(MessageChain.create([
                         Plain(text='该功能已关闭，请阅读文档或者使用 "/contact" 联系机器人管理员开启。')
                     ]), Normal())
@@ -156,13 +164,13 @@ class ImageSearch(AbstractHandler):
         data = result["data"]
         long_remaining = json_data["header"]["long_remaining"]
 
-        if await get_setting(group.id, Setting.trusted):
+        if await group_setting.get_setting(group.id, Setting.trusted):
             async with aiohttp.ClientSession() as session:
                 async with session.get(url=header["thumbnail"], proxy=proxy) as resp:
                     img_content = await resp.read()
 
         similarity = header["similarity"]
-        similarity_limit = float(await get_setting(group.id, Setting.img_search_similarity))
+        similarity_limit = float(await group_setting.get_setting(group.id, Setting.img_search_similarity))
         if float(similarity) < similarity_limit:
             return MessageChain.create([
                 Plain(text=f"没有搜索到高于本群相似度阈值的图片。\n本群相似度阈值为 {similarity_limit}%。\n服务器 24 小时内可再搜索 {long_remaining} 次")
@@ -173,7 +181,7 @@ class ImageSearch(AbstractHandler):
                 data_str += (f"{key}:\n    " + "\n".join(data[key]) + "\n")
             else:
                 data_str += f"{key}:\n    {data[key]}\n"
-        if await get_setting(group.id, Setting.trusted):
+        if await group_setting.get_setting(group.id, Setting.trusted):
             return MessageChain.create([
                 Image(data_bytes=img_content),
                 Plain(text=f"\n{data_str}\n服务器 24 小时内可再搜索 {long_remaining} 次")
@@ -208,3 +216,40 @@ class ImageSearch(AbstractHandler):
                 }
             )
             return None
+
+
+class ImageSearchHelp(HelpPage):
+    __description__ = "搜图"
+    __trigger__ = "搜图"
+    __category__ = 'utility'
+    __icon__ = "image-search"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        if self.group or self.member:
+            if not await group_setting.get_setting(self.group.id, Setting.img_search):
+                status = HelpPageElement(icon="toggle-switch-off", text="已关闭")
+            else:
+                status = HelpPageElement(icon="toggle-switch", text="已开启")
+        else:
+            status = HelpPageElement(icon="close", text="暂不支持")
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="搜图", is_title=True),
+            HelpPageElement(text="查找给定图片的来源"),
+            status,
+            HelpPageElement(icon="cash", text="使用搜图需要消耗一定硬币数"),
+            HelpPageElement(icon="alert", text="搜索所得结果相似度低于设定值时将被丢弃，此时仍会消耗硬币数"),
+            HelpPageElement(icon="pound-box", text="更改设置需要管理员权限\n"
+                                                   "发送\"打开搜图开关\"或者\"关闭搜图开关\"即可更改开关"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n发送\"搜图\"，随后发送需要搜索的图片即可"),
+            HelpPageElement(icon="api", text="本功能依赖 SauceNAO API，使用时请注意次数限制\n"
+                                             "我的意思是，不要再用这个搜一些乱七八糟的表情包了")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

@@ -1,20 +1,20 @@
-import asyncio
 import json
 import uuid
 import base64
+import aiohttp
+import asyncio
 import traceback
 from typing import Union
 
-import aiohttp
-from graia.ariadne.model import Friend, UploadMethod
+from graia.ariadne.model import Friend
 from loguru import logger
-from graiax import silkcoder
 from sqlalchemy import select
 
+from graiax import silkcoder
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.element import Plain
 from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain, Voice
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
 
@@ -69,10 +69,7 @@ class Speak(AbstractHandler):
                 if isinstance(voice, str):
                     return MessageItem(MessageChain.create([Plain(text=voice)]), QuoteSource())
                 elif isinstance(voice, bytes):
-                    voice_element = await app.uploadVoice(await silkcoder.encode(voice),
-                                                          method=UploadMethod.Group if member and group
-                                                          else UploadMethod.Friend)
-                    return MessageItem(MessageChain.create([voice_element]), Normal())
+                    return MessageItem(MessageChain.create([Voice(data_bytes=await silkcoder.encode(voice))]), Normal())
         elif message.asDisplay().startswith("长语音查询 "):
             _, task_id = message.asDisplay().split(" ", maxsplit=1)
             if query := await Speak.get_long_voice_status(task_id):
@@ -122,9 +119,9 @@ class Speak(AbstractHandler):
                     voice = json.loads(resp.to_json_string())["Audio"]
                     return base64.b64decode(voice)
                 except TencentCloudSDKException as err:
+                    logger.error(traceback.format_exc())
                     if err.get_code() == "UnsupportedOperation.TextTooLong":
                         return await Speak.get_long_voice(voice_type, text)
-                    logger.error(traceback.format_exc())
                     return str(err)
             else:
                 return None

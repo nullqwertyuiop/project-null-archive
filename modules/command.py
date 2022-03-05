@@ -103,6 +103,9 @@ class Command(AbstractHandler):
     async def help(app: Ariadne, message: MessageChain, group: Union[Group, int] = None,
                    member: Union[Member, int] = None, friend: Union[Friend, int] = None,
                    content: Union[str, None] = None) -> Union[list, None]:
+        return [
+            Plain(text="本功能触发词已改为 \".help\"，请通过新触发词使用。"),
+        ]
         with open(f"{os.getcwd()}/statics/manual.json", "r", encoding="utf-8") as r:
             manual = json.loads(r.read())
         if member and group:

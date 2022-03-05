@@ -9,8 +9,8 @@ from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from sagiri_bot.decorators import switch, blacklist
 from statics.character_dict import character_dict
+from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.message_sender.message_item import MessageItem

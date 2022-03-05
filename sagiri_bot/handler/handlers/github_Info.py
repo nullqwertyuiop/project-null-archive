@@ -3,11 +3,13 @@ from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
+from graia.ariadne.exception import MessageTooLong
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
+from sagiri_bot.utils import MessageChainUtils
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.strategy import QuoteSource
@@ -31,7 +33,12 @@ async def github_info(app: Ariadne, message: MessageChain, friend: Friend):
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
 async def github_info(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await GithubInfo.handle(app, message, group, member):
-        await MessageSender(result.strategy).send(app, result.message, message, group, member)
+        try:
+            await MessageSender(result.strategy).send(app, result.message, message, group, member)
+        except MessageTooLong:
+            await MessageSender(result.strategy).send(
+                app, await MessageChainUtils.messagechain_to_img(result.message), message, group, member
+            )
 
 
 class GithubInfo(AbstractHandler):
@@ -60,7 +67,10 @@ class GithubInfo(AbstractHandler):
                 return MessageItem(MessageChain.create([Plain(text="没有搜索到结果。")]), QuoteSource())
             if image:
                 img_url += result[0]["full_name"]
-                return MessageItem(MessageChain.create([Image(url=img_url)]), QuoteSource())
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(img_url) as resp:
+                        content = await resp.read()
+                return MessageItem(MessageChain.create([Image(data_bytes=content)]), QuoteSource())
             else:
                 result = result[0]
                 name = result["name"]

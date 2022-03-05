@@ -20,7 +20,7 @@ from sagiri_bot.orm.async_orm import orm
 from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
-from sagiri_bot.utils import update_user_call_count_plus, get_setting
+from sagiri_bot.utils import update_user_call_count_plus, group_setting
 from sagiri_bot.orm.async_orm import Setting, UserCalledCount
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
@@ -55,12 +55,12 @@ class ChatReply(AbstractHandler):
         if message.has(At) and message.get(At)[0].target == config.bot_qq:
             await update_user_call_count_plus(group, member, UserCalledCount.at, "at")
             content = "".join(plain.text for plain in message.get(Plain)).strip().replace(" ", "，")
-            return await ChatReply.get_reply(member.id, group.id, content)
+            return await ChatReply.get_reply(group.id, content)
         else:
             return None
 
     @staticmethod
-    async def get_reply(member_id: int, group_id: int, content: str):
+    async def get_reply(group_id: int, content: str):
         if mode_now := await orm.fetchone(select(Setting.speak_mode).where(Setting.group_id == group_id)):
             mode_now = mode_now[0]
             if mode_now == "normal":
@@ -108,7 +108,7 @@ class ChatReply(AbstractHandler):
             params = {"Query": query}
             req.from_json_string(json.dumps(params))
             resp = client.ChatBot(req)
-            confidence_limit = float(await get_setting(group_id, Setting.chat_confidence))
+            confidence_limit = float(await group_setting.get_setting(group_id, Setting.chat_confidence))
             confidence = json.loads(resp.to_json_string())["Confidence"]
             if confidence < confidence_limit:
                 return "Null 没有足够的自信回答这个问题。"

@@ -235,6 +235,7 @@ class Setting(Base):
     # message_merge = Column(Boolean, default=True)
     # pdf = Column(Boolean, default=True)
     # pero_dog = Column(Boolean, default=True)
+    img_restriction = Column(String(length=1), nullable=False, default="s")
 
 
 class UserCalledCount(Base):
@@ -393,13 +394,16 @@ class AdvancedSetu(Base):
     """ 高级色图 """
     __tablename__ = "advanced_setu"
 
-    group = Column(BIGINT, primary_key=True)
-    strategy = Column(String(length=256), nullable=False, default="s")
-    mixed = Column(Boolean, nullable=False)
-    last_time = Column(BIGINT, nullable=False, default=0)
-    trigger_word = Column(String(length=256), nullable=True, default="")
-    first_run = Column(Boolean, nullable=False, default=True)
-    process = Column(String(length=10), nullable=False, default="noProcess")
+    id = Column(Integer, primary_key=True)
+    type = Column(String(length=10), nullable=False, default="img")
+    path = Column(String(length=4000), nullable=False, default="none")
+    tag = Column(String(length=4000), nullable=True)
+    restriction = Column(String(length=1), nullable=False, default="s")
+    artist = Column(String(length=200), nullable=True)
+    source = Column(String(length=4000), nullable=True)
+    date = Column(DateTime, nullable=False)
+    score = Column(Integer, nullable=False, default=0)
+    uploader = Column(BIGINT, nullable=False, default=0)
 
 
 class PermanentBlackList(Base):

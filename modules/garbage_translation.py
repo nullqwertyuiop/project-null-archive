@@ -2,7 +2,6 @@ import json
 import random
 
 import aiohttp
-import requests
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain

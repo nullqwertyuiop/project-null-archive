@@ -14,7 +14,7 @@ from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, Setting
-from sagiri_bot.utils import get_setting, user_permission_require
+from sagiri_bot.utils import group_setting, user_permission_require
 
 saya = Saya.current()
 channel = Channel.current()
@@ -74,7 +74,7 @@ class Notice(AbstractHandler):
         )
         group_list = await app.getGroupList()
         for group in group_list:
-            if await get_setting(group.id, Setting.notice):
+            if await group_setting.get_setting(group.id, Setting.notice):
                 try:
                     await app.sendGroupMessage(group, MessageChain.fromPersistentString(message_serialization))
                 except:

@@ -15,6 +15,7 @@ from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import Revoke
+from sagiri_bot.utils import HelpPage, HelpPageElement
 
 saya = Saya.current()
 channel = Channel.current()
@@ -118,3 +119,31 @@ class RiddleEncoderHandler(AbstractHandler):
         for c in s:
             result = result * 100 + RiddleEncoderHandler.__keys.find(c)
         return result
+
+
+class RiddleEncoderHelp(HelpPage):
+    __description__ = "加密通话"
+    __trigger__ = "\"加密通话#编码#内容\"或者\"加密通话#解码#内容\""
+    __category__ = "utility"
+    __switch__ = None
+    __icon__ = "message-text-lock"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="加密通话", is_title=True),
+            HelpPageElement(text="利用 Null 的自创算法生成一段密文"),
+            HelpPageElement(icon="check-all", text="已全局开启"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n"
+                                                      "示例1：\"加密通话#编码#内容\"\n"
+                                                      "示例2：\"加密通话#解码#内容\"\n"),
+            HelpPageElement(icon="alert", text="不是真的打电话，不要问我为什么没接到电话")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

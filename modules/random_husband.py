@@ -27,7 +27,7 @@ from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.orm.async_orm import orm, RandomHusband, Setting, UserCalledCount
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.message_sender.strategy import QuoteSource
-from sagiri_bot.utils import update_user_call_count_plus, get_setting
+from sagiri_bot.utils import update_user_call_count_plus, group_setting, HelpPage, HelpPageElement
 from modules.wallet import Wallet
 
 saya = Saya.current()
@@ -65,7 +65,8 @@ class RandomHusbandHandler(AbstractHandler):
         1417324298: 'furry/Dog X Bloods 2.png',
         2493624260: 'furry/Dog X Bloods 3.png',
         490294215: 'furry/Dog X Bloods 1.png',
-        623733930: 'furry/Dog X Bloods 1.png'
+        623733930: 'furry/Dog X Bloods 1.png',
+        973507763: 'furry/七筒.jpg'
     }
 
     @staticmethod
@@ -75,7 +76,7 @@ class RandomHusbandHandler(AbstractHandler):
                      member: Member = None, friend: Friend = None):
         if message.asDisplay() in ("随机老公", "隨機老公"):
             if member and group:
-                if not await get_setting(group.id, Setting.random_husband):
+                if not await group_setting.get_setting(group.id, Setting.random_husband):
                     return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
@@ -84,7 +85,7 @@ class RandomHusbandHandler(AbstractHandler):
                                QuoteSource())
         elif message.asDisplay() in ("随机兽人老公", "隨機獸人老公"):
             if member and group:
-                if not await get_setting(group.id, Setting.random_husband):
+                if not await group_setting.get_setting(group.id, Setting.random_husband):
                     return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
@@ -93,7 +94,7 @@ class RandomHusbandHandler(AbstractHandler):
                                QuoteSource())
         elif message.asDisplay() in ("随机人类老公", "隨機人類老公"):
             if member and group:
-                if not await get_setting(group.id, Setting.random_husband):
+                if not await group_setting.get_setting(group.id, Setting.random_husband):
                     return MessageItem(MessageChain.create([Plain(text=f"随机老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
@@ -102,7 +103,7 @@ class RandomHusbandHandler(AbstractHandler):
                                QuoteSource())
         elif message.asDisplay() in ("十连老公", "十連老公"):
             if member and group:
-                if not await get_setting(group.id, Setting.ten_husband):
+                if not await group_setting.get_setting(group.id, Setting.ten_husband):
                     return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
@@ -111,7 +112,7 @@ class RandomHusbandHandler(AbstractHandler):
                                QuoteSource())
         elif message.asDisplay() in ("十连兽人老公", "十連獸人老公"):
             if member and group:
-                if not await get_setting(group.id, Setting.ten_husband):
+                if not await group_setting.get_setting(group.id, Setting.ten_husband):
                     return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
@@ -120,21 +121,22 @@ class RandomHusbandHandler(AbstractHandler):
                                QuoteSource())
         elif message.asDisplay() in ("十连人类老公", "十連人類老公"):
             if member and group:
-                if not await get_setting(group.id, Setting.ten_husband):
+                if not await group_setting.get_setting(group.id, Setting.ten_husband):
                     return MessageItem(MessageChain.create([Plain(text=f"十连老公模块已被禁用。")]),
                                        QuoteSource())
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             return MessageItem(MessageChain.create(await RandomHusbandHandler.get_ten(
                 member=member, group=group, friend=friend, pool="human")),
                                QuoteSource())
-        elif re.match("(\d+(?:.)?\d+)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公", message.asDisplay()):
-            times = re.compile("(\d+(?:.)?\d+)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公") \
+        elif re.match("(\d+((?:.)?\d+)?)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公", message.asDisplay()):
+            times = re.compile("(\d+((?:.)?\d+)?)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公") \
                 .search(message.asDisplay()).group(1)
             times = int(times) if "." not in times else float(times)
             if times > 100:
                 return MessageItem(MessageChain.create([Plain(text=f"不要贪心。")]),
                                    QuoteSource())
-            if pool := re.compile("(\d+)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公").search(message.asDisplay()).group(2):
+            if pool := re.compile("(\d+(?:(?:.)?\d+)?)(?: )?(?:连|連)(獸人|兽人|人类|人類)?老公").search(
+                    message.asDisplay()).group(2):
                 pool_cord = {
                     "兽人": "furry",
                     "獸人": "furry",
@@ -191,7 +193,7 @@ class RandomHusbandHandler(AbstractHandler):
         choice = random.choice(choices) if not cheat_husband else cheat_husband
         random.seed()
         try:
-            husband = IMG.open(choice)
+            husband = IMG.open(choice).convert("RGBA")
         except Exception as e:
             if "FileNotFoundError" in str(e):
                 RandomHusband.furry_pool = os.listdir(f"{os.getcwd()}/statics/random_husband/furry/")
@@ -203,7 +205,7 @@ class RandomHusbandHandler(AbstractHandler):
                     RandomHusband.human_pool[index] = f"{os.getcwd()}/statics/random_husband/human/" \
                                                       + RandomHusband.human_pool[index]
                 RandomHusband.mixed_pool = RandomHusband.furry_pool + RandomHusband.human_pool
-                husband = IMG.open(choice)
+                husband = IMG.open(choice).convert("RGBA")
             else:
                 return [Plain(text="[未知错误] 请联系机器人管理员。")]
         file_name = choice.split("/")[-2:]
@@ -297,7 +299,7 @@ class RandomHusbandHandler(AbstractHandler):
                 extra = 0
                 for i in range(0, 10):
                     choice = random.choice(choices)
-                    husband = IMG.open(choice).resize((100, 100), IMG.ANTIALIAS)
+                    husband = IMG.open(choice).convert("RGBA").resize((100, 100), IMG.ANTIALIAS)
                     if randrange(101) <= 2 and limit != -1:
                         husband = member_avatar
                         extra += 1
@@ -397,7 +399,7 @@ class RandomHusbandHandler(AbstractHandler):
                         if i == times:
                             break
                         choice = random.choice(choices)
-                        husband = IMG.open(choice).resize((size, size), IMG.ANTIALIAS)
+                        husband = IMG.open(choice).convert("RGBA").resize((size, size), IMG.ANTIALIAS)
                         if randrange(math.ceil(100 * times / 10) + 1) <= 2 and limit != -1:
                             husband = member_avatar
                             extra += 1
@@ -409,7 +411,7 @@ class RandomHusbandHandler(AbstractHandler):
                                 break
                             elif fractional != 0:
                                 choice = random.choice(choices)
-                                husband = IMG.open(choice).resize((size, size), IMG.ANTIALIAS)
+                                husband = IMG.open(choice).convert("RGBA").resize((size, size), IMG.ANTIALIAS)
                                 husband = husband.crop((0, 0, math.ceil(size * math.sqrt(fractional)),
                                                         math.ceil(size * math.sqrt(fractional))))
                                 if randrange(math.ceil(100 * times / 10) + 1) <= 2 and limit != -1:
@@ -420,7 +422,7 @@ class RandomHusbandHandler(AbstractHandler):
                                              (gap_size + x * (size + gap_size), gap_size + y * (size + gap_size)))
                                 break
                         choice = random.choice(choices)
-                        husband = IMG.open(choice).resize((size, size), IMG.ANTIALIAS)
+                        husband = IMG.open(choice).convert("RGBA").resize((size, size), IMG.ANTIALIAS)
                         if randrange(math.ceil(100 * times / 10) + 1) <= 2 and limit != -1:
                             husband = member_avatar
                             extra += 1
@@ -450,3 +452,36 @@ class RandomHusbandHandler(AbstractHandler):
                 return [Image(data_bytes=output.getvalue()),
                         Plain(text=f"本次抽取耗费 {amount} 硬币，\n你现在一共有 {wallet - amount} 硬币。\n"),
                         Plain(text=f"你今日在本群还剩抽取次数 {limit - ten_husband_times - 1} 次。")]
+
+
+class RandomHusbandHelp(HelpPage):
+    __description__ = "随机老公"
+    __trigger__ = "随机/十连/n 连/x.y 连老公"
+    __category__ = "entertainment"
+    __switch__ = None
+    __icon__ = "face-man"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="随机老公", is_title=True),
+            HelpPageElement(text="从本地图库中随机抽取一名男性"),
+            HelpPageElement(icon="check-all", text="已全局开启"),
+            HelpPageElement(icon="cash", text="使用n连老公时需要消耗一定硬币数"),
+            HelpPageElement(icon="face-man", text="可抽取的图库：\n"
+                                                  "人类，兽人"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n"
+                                                      "示例1：\"随机人类老公\"\n"
+                                                      "示例2：\"十连老公\"\n"
+                                                      "示例3：\"20连兽人老公\""),
+            HelpPageElement(icon="alert", text="不要因为抽不到好卡就把我举报了喂！\n"
+                                               "不要再问我为什么抽到了自己头像了喂！")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

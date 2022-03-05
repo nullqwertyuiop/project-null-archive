@@ -18,7 +18,7 @@ from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import Normal
-from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount, HelpPage, HelpPageElement
 
 saya = Saya.current()
 channel = Channel.current()
@@ -168,3 +168,34 @@ class PNAvatarFunPicHandler(AbstractHandler):
         output = BytesIO()
         back.save(output, format='jpeg')
         return Image(data_bytes=output.getvalue())
+
+
+class AvatarFunHelp(HelpPage):
+    __description__ = "头像相关处理"
+    __trigger__ = "亲/摸/贴/撕/完美/精神支柱 @目标"
+    __category__ = "entertainment"
+    __switch__ = None
+    __icon__ = "account-circle"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="头像相关处理", is_title=True),
+            HelpPageElement(text="根据请求生成对目标头像的趣味图像，支持使用 @ 或者图片"),
+            HelpPageElement(icon="check-all", text="已全局开启"),
+            HelpPageElement(icon="numeric-1-circle", text="支持 1 个目标的功能：\n"
+                                                          "亲，摸，贴，撕，完美，精神支柱"),
+            HelpPageElement(icon="numeric-2-circle", text="支持 2 个目标的功能：\n"
+                                                          "亲，贴，3p"),
+            HelpPageElement(icon="numeric-3-circle", text="支持 3 个目标的功能：\n"
+                                                          "3p"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n发送\"亲 [图片] @目标\"即可")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

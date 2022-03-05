@@ -10,6 +10,7 @@ from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
 from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import HelpPage, HelpPageElement
 from statics.furry_character_dict import furry_character_dict
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.strategy import QuoteSource
@@ -84,3 +85,30 @@ class RandomFursona(AbstractHandler):
                 iris_color = content
             items.append(f"{k}：{content}")
         return "\n".join(items)
+
+
+class RandomFursonaHelp(HelpPage):
+    __description__ = "随机兽设"
+    __trigger__ = "随机兽设"
+    __category__ = "utility"
+    __switch__ = None
+    __icon__ = "badge-account-horizontal"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="随机兽设", is_title=True),
+            HelpPageElement(text="随机生成一份兽人设定"),
+            HelpPageElement(icon="check-all", text="已全局开启"),
+            HelpPageElement(icon="alert", text="本项目生成的兽设仅供参考"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n"
+                                                      "发送\"随机兽设\"即可")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

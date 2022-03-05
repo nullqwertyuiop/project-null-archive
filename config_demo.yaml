@@ -14,7 +14,7 @@ image_path:
   setu18: setu18
   real: real
   real_highq: real_highq
-  wallpaper: wallpaper
+  bizhi: bizhi
   sketch: sketch
 
 # 功能相关
@@ -37,6 +37,7 @@ functions:
     daily_search_limit: 1
     daily_random_limit: 1
     daily_rank_limit: 1
+    compress_password: i_luv_sagiri
   twitter:
     bearer: bearer
   riddle:

@@ -21,7 +21,7 @@ from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, Prostitute, SignInReward, Setting
 from sagiri_bot.decorators import switch, blacklist
-from sagiri_bot.utils import get_setting
+from sagiri_bot.utils import group_setting
 from modules.wallet import Wallet
 
 saya = Saya.current()
@@ -50,7 +50,7 @@ class ProstituteHandler(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
         # if message.asDisplay() in ("#卖铺", "#站街", "#开张", "#打工 卖铺", "#打工 站街", "#打工 开张", "卖铺", "站街", "开张"):
-        #     if not await get_setting(group.id, Setting.prostitute):
+        #     if not await group_setting.get_setting(group.id, Setting.prostitute):
         #         return None
         #     try:
         #         result = await ProstituteHandler.prostitute(member.id)
@@ -61,14 +61,14 @@ class ProstituteHandler(AbstractHandler):
         #         logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
         #         return None
         if message.asDisplay() in ("我的β", "我的贝塔"):
-            if not await get_setting(group.id, Setting.prostitute):
+            if not await group_setting.get_setting(group.id, Setting.prostitute):
                 return None
             result = await ProstituteHandler.get_beta(group, member)
             return MessageItem(MessageChain.create([
                 # Image(data_bytes=await ProstituteHandler.get_avatar(member.id)),
                 Plain(text=result)]), QuoteSource())
         elif re.match("转硬币#.*", message.asDisplay()):
-            if not await get_setting(group.id, Setting.prostitute):
+            if not await group_setting.get_setting(group.id, Setting.prostitute):
                 return None
             return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource())
             # try:
@@ -86,7 +86,7 @@ class ProstituteHandler(AbstractHandler):
             #     logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
             #     return None
         elif re.match("转β币#.*", message.asDisplay()):
-            if not await get_setting(group.id, Setting.prostitute):
+            if not await group_setting.get_setting(group.id, Setting.prostitute):
                 return None
             return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource())
             # try:

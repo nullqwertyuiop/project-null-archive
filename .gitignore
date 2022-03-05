@@ -4,7 +4,6 @@ config.yaml
 
 # Python binary files
 */__pycache__
-*.pyc
 
 # macOS special files
 .DS_Store
@@ -12,10 +11,13 @@ config.yaml
 .LSOverride
 ._*
 
-/alembic/versions
+/alembic
 /.idea
-*.db
-*.log
-alembic.ini
-sagiri_bot/handler/handlers/github_watcher/watcher_data.json
-sagiri_bot/handler/handlers/github_watcher/watcher_data.json
+data.db
+test.py
+/log
+/sagiri_bot/handler/required_module/saya_manager/saya_data.json
+*.pyc
+/sagiri_bot/handler/handlers/pica/cache
+statics/genshin/*.json
+sagiri_bot/core/api_server/data.json

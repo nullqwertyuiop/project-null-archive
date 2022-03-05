@@ -22,7 +22,8 @@ from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, Setting, LiveAHeroSimulator, UserCalledCount, GachaSimulatorRecord
 from sagiri_bot.decorators import switch, blacklist
-from sagiri_bot.utils import update_user_call_count_plus, get_setting, user_permission_require
+from sagiri_bot.utils import update_user_call_count_plus, group_setting, user_permission_require, HelpPage, \
+    HelpPageElement
 from modules.wallet import Wallet
 
 saya = Saya.current()
@@ -119,7 +120,7 @@ class LiveAHeroGachaSimulator(AbstractHandler):
                 "LAH模拟抽卡", "LAH 模拟抽卡", "lah模拟抽卡", "lah 模拟抽卡", "LAH模擬抽卡", "LAH 模擬抽卡", "lah模擬抽卡", "lah 模擬抽卡"
         ):
             if member and group:
-                if not await get_setting(group.id, Setting.gacha_simulator):
+                if not await group_setting.get_setting(group.id, Setting.gacha_simulator):
                     return MessageItem(
                         MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
                         QuoteSource()
@@ -132,7 +133,7 @@ class LiveAHeroGachaSimulator(AbstractHandler):
                 "LAH抽卡总结", "LAH 抽卡总结", "lah抽卡总结", "lah 抽卡总结", "LAH抽卡總結", "LAH 抽卡總結", "lah抽卡總結", "lah 抽卡總結"
         ):
             if member and group:
-                if not await get_setting(group.id, Setting.gacha_simulator):
+                if not await group_setting.get_setting(group.id, Setting.gacha_simulator):
                     return MessageItem(
                         MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
                         QuoteSource()
@@ -144,7 +145,7 @@ class LiveAHeroGachaSimulator(AbstractHandler):
                 "LAH模拟限定抽卡", "LAH 模拟限定抽卡", "lah模拟限定抽卡", "lah 模拟限定抽卡", "LAH模擬限定抽卡", "LAH 模擬限定抽卡", "lah模擬限定抽卡",
                 "lah 模擬限定抽卡"):
             if member and group:
-                if not await get_setting(group.id, Setting.gacha_simulator):
+                if not await group_setting.get_setting(group.id, Setting.gacha_simulator):
                     return MessageItem(
                         MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
                         QuoteSource()
@@ -157,7 +158,7 @@ class LiveAHeroGachaSimulator(AbstractHandler):
                 "LAH模拟UP抽卡", "LAH 模拟 UP 抽卡", "lah模拟up抽卡", "lah 模拟 up 抽卡", "LAH模擬UP抽卡", "LAH 模擬UP抽卡", "lah模擬up抽卡",
                 "lah 模擬 up 抽卡"):
             if member and group:
-                if not await get_setting(group.id, Setting.gacha_simulator):
+                if not await group_setting.get_setting(group.id, Setting.gacha_simulator):
                     return MessageItem(
                         MessageChain.create([Plain(text=f"模拟抽卡功能已被禁用。")]),
                         QuoteSource()
@@ -551,3 +552,31 @@ class LiveAHeroGachaSimulator(AbstractHandler):
                            f"三星助手数：{three_s_sk} ({three_s_sk_per}%)\n"
                            f"四星助手数：{four_s_sk} ({four_s_sk_per}%)\n"
                            f"总抽取次数：{total_times * 10}")]
+
+
+class HelpYouSearchHelp(HelpPage):
+    __description__ = "Live a Hero 模拟抽卡"
+    __trigger__ = "lah模拟抽卡"
+    __category__ = 'entertainment'
+    __switch__ = None
+    __icon__ = "cards-playing"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="Live a Hero 模拟抽卡", is_title=True),
+            HelpPageElement(text="生成一张 Live a Hero 的模拟抽卡页面"),
+            HelpPageElement(icon="cash", text="使用搜图需要消耗一定硬币数"),
+            HelpPageElement(icon="pound-box", text="更改设置需要管理员权限\n"
+                                                   "发送\"吃桃模式#整数\"即可在指定抽数内提高出率"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n直接发送\"lah模拟抽卡\"即可"),
+            HelpPageElement(icon="alert", text="不要因为抽不到好卡就把我举报了喂！")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

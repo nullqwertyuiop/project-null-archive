@@ -21,7 +21,7 @@ from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, MigrateProstitute, Setting, Prostitute
 from sagiri_bot.decorators import switch, blacklist
-from sagiri_bot.utils import get_setting
+from sagiri_bot.utils import group_setting, HelpPage, HelpPageElement
 from modules.wallet import Wallet
 
 saya = Saya.current()
@@ -98,7 +98,7 @@ class ImprovedSignIn(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
         if message.asDisplay() in ("卖铺", "站街", "开张", "賣鋪", "站街", "開張"):
-            if not await get_setting(group.id, Setting.prostitute):
+            if not await group_setting.get_setting(group.id, Setting.prostitute):
                 return None
             return MessageItem(MessageChain.create([
                 # Image(data_bytes=await ImprovedSignIn.get_avatar(member.id)),
@@ -107,7 +107,7 @@ class ImprovedSignIn(AbstractHandler):
         elif message.asDisplay() == "站街排行榜":
             return await ImprovedSignIn.prostitute_toplist(app, group, member)
         # elif message.asDisplay() in ("卖铺测试", "站街测试", "开张测试"):
-        #     if not await get_setting(group.id, Setting.prostitute):
+        #     if not await group_setting.get_setting(group.id, Setting.prostitute):
         #         return None
         #     if not await user_permission_require(group, member, 4):
         #         return MessageItem(MessageChain.create([Plain(text="权限不足，无法进行该测试，可申请加入测试计划。")]),
@@ -118,7 +118,7 @@ class ImprovedSignIn(AbstractHandler):
         #     result.extend(await ImprovedSignIn.prostitute(member, group))
         #     return MessageItem(MessageChain.create(result), QuoteSource())
         # elif re.match("更改物种#.*#.*", message.asDisplay() or re.match("更改物種#.*#.*", message.asDisplay())):
-        #     if not await get_setting(group.id, Setting.prostitute):
+        #     if not await group_setting.get_setting(group.id, Setting.prostitute):
         #         return None
         #     try:
         #         _, subject, race = message.asDisplay().split("#")
@@ -518,3 +518,39 @@ class ImprovedSignIn(AbstractHandler):
         output = BytesIO()
         img_content.save(output, format='jpeg')
         return output.getvalue()
+
+
+class HelpYouSearchHelp(HelpPage):
+    __description__ = "站街"
+    __trigger__ = "站街"
+    __category__ = 'hidden'
+    __switch__ = Setting.prostitute
+    __icon__ = "beta"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        if self.group or self.member:
+            if not await group_setting.get_setting(self.group.id, Setting.prostitute):
+                status = HelpPageElement(icon="toggle-switch-off", text="已经关噜！")
+            else:
+                status = HelpPageElement(icon="toggle-switch", text="已经开惹")
+        else:
+            status = HelpPageElement(icon="close", text="暂不支持")
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="站街", is_title=True),
+            HelpPageElement(text="清者自清，看不懂什么意思很正常"),
+            status,
+            HelpPageElement(icon="cash", text="每天可使用本功能获得一定数量的硬币"),
+            HelpPageElement(icon="pound-box", text="更改设置需要管理员权限\n"
+                                                   "发送\"打开站街开关\"或者\"关闭站街开关\"即可更改开关"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n直接发送\"站街\"即可"),
+            HelpPageElement(icon="alert-circle", text="不要站得到处都是！")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

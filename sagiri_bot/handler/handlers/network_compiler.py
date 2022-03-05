@@ -9,7 +9,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from sagiri_bot.utils import get_setting
+from sagiri_bot.utils import group_setting
 from sagiri_bot.orm.async_orm import Setting
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
@@ -52,7 +52,7 @@ class NetworkCompiler(AbstractHandler):
         if re.match(r"super .*[\n\r]+[\s\S]*", message_text):
             if member and group:
                 await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
-                if not await get_setting(group.id, Setting.compile):
+                if not await group_setting.get_setting(group.id, Setting.compile):
                     return MessageItem(MessageChain.create([
                         Plain(text="该功能已关闭，请阅读文档或联系机器人管理员开启。")
                     ]), Normal())

@@ -19,7 +19,7 @@ from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import orm, SignInReward, Setting, UserCalledCount
 from sagiri_bot.decorators import switch, blacklist
-from sagiri_bot.utils import get_setting, update_user_call_count_plus
+from sagiri_bot.utils import group_setting, update_user_call_count_plus, HelpPage, HelpPageElement
 from modules.wallet import Wallet
 
 saya = Saya.current()
@@ -51,7 +51,7 @@ class SignInRewardHandler(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
         if message.asDisplay() in ("签到", "簽到"):
-            if not await get_setting(group.id, Setting.sign_in):
+            if not await group_setting.get_setting(group.id, Setting.sign_in):
                 return None
             await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
             result = await SignInRewardHandler.sign_in(group, member)
@@ -188,3 +188,39 @@ class SignInRewardHandler(AbstractHandler):
                 {"qq": member,
                  "extra": 0})
             return True
+
+
+class SignInRewardHelp(HelpPage):
+    __description__ = "签到"
+    __trigger__ = "签到"
+    __category__ = 'utility'
+    __switch__ = Setting.sign_in
+    __icon__ = "clipboard-check"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        if self.group or self.member:
+            if not await group_setting.get_setting(self.group.id, Setting.prostitute):
+                status = HelpPageElement(icon="toggle-switch-off", text="已关闭！")
+            else:
+                status = HelpPageElement(icon="toggle-switch", text="已开启")
+        else:
+            status = HelpPageElement(icon="close", text="暂不支持")
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="签到", is_title=True),
+            HelpPageElement(text="字面意思"),
+            status,
+            HelpPageElement(icon="cash", text="每天可使用本功能获得一定数量的硬币"),
+            HelpPageElement(icon="pound-box", text="更改设置需要管理员权限\n"
+                                                   "发送\"打开签到开关\"或者\"关闭签到开关\"即可更改开关"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n直接发送\"签到\"即可"),
+            HelpPageElement(icon="alert", text="请尽可能避免在每日 0 点签到")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

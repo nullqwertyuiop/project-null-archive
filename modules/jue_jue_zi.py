@@ -17,6 +17,7 @@ from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.decorators import switch, blacklist
+from sagiri_bot.utils import HelpPage, HelpPageElement
 
 saya = Saya.current()
 channel = Channel.current()
@@ -80,3 +81,28 @@ class JueJueZi(AbstractHandler):
                 result = result + str(random.choice(juejuezi["emotions"]["emoji"]))
             result = result + divider
         return result
+
+
+class JueJueZiHelp(HelpPage):
+    __description__ = "绝绝子"
+    __trigger__ = "绝绝子#内容#内容"
+    __category__ = 'entertainment'
+    __switch__ = None
+    __icon__ = "heart"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="绝绝子", is_title=True),
+            HelpPageElement(text="自动生成\"绝绝子风格\"的文本"),
+            HelpPageElement(icon="check-all", text="已全局开启"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n发送\"绝绝子#动词#名词\"即可")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

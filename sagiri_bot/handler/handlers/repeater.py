@@ -1,4 +1,5 @@
 from typing import Optional
+from asyncio import Semaphore
 
 from graia.ariadne.message.element import Image, Plain, At, Quote, AtAll, Face, Poke
 from graia.ariadne.model import Friend
@@ -8,7 +9,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
 
-from sagiri_bot.utils import get_setting
+from sagiri_bot.utils import group_setting
 from sagiri_bot.orm.async_orm import Setting
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.message_sender.strategy import Normal
@@ -21,6 +22,8 @@ channel = Channel.current()
 channel.name("Repeater")
 channel.author("SAGIRI-kawaii")
 channel.description("一个复读插件，有两条以上相同信息时自动触发")
+
+mutex = Semaphore(1)
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage]))
@@ -45,7 +48,7 @@ class Repeater(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None) -> Optional[MessageItem]:
         message_serialization = message.asPersistentString()
-        if await get_setting(group.id, Setting.repeat):
+        if await group_setting.get_setting(group.id, Setting.repeat):
             if group.id not in Repeater.group_repeat.keys():
                 Repeater.group_repeat[group.id] = {"msg": message_serialization, "count": 1}
             else:
@@ -55,7 +58,7 @@ class Repeater(AbstractHandler):
                     count = Repeater.group_repeat[group.id]["count"] + 1
                     if count == 3:
                         Repeater.group_repeat[group.id]["count"] = count
-                        if message.has(Image) and not await get_setting(group.id, Setting.trusted):
+                        if message.has(Image) and not await group_setting.get_setting(group.id, Setting.trusted):
                             return None
                         msg = message.include(Plain, Image, At, Quote, AtAll, Face, Poke)
                         return MessageItem(msg.asSendable(), Normal())

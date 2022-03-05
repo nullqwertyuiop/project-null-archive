@@ -15,7 +15,7 @@ from graia.saya.channel import Channel
 from graia.ariadne.model import MiraiSession
 from graia.ariadne.adapter import DefaultAdapter
 from graia.saya.builtins.broadcast import BroadcastBehaviour
-from sqlalchemy.exc import InternalError
+from sqlalchemy.exc import InternalError, ProgrammingError
 
 try:
     from graia.scheduler import GraiaScheduler
@@ -27,6 +27,7 @@ except (ModuleNotFoundError, ImportError):
 
 from .exceptions import *
 from sagiri_bot.orm.async_orm import orm
+from sagiri_bot.utils import group_setting
 from sagiri_bot.config import GlobalConfig
 from sagiri_bot.orm.async_orm import Setting, UserPermission
 from sagiri_bot.frequency_limit_module import GlobalFrequencyLimitDict, frequency_limit
@@ -144,7 +145,7 @@ class AppCore(object):
         try:
             try:
                 await orm.init_check()
-            except (AttributeError, InternalError):
+            except (AttributeError, InternalError, ProgrammingError):
                 await orm.create_all()
             if not os.path.exists(f"{os.getcwd()}/alembic"):
                 logger.info("未检测到alembic目录，进行初始化")
@@ -188,6 +189,7 @@ class AppCore(object):
                 args=(self.__app, exception_resender_instance, self.__loop)
             )
             listener.start()
+            await group_setting.data_init()
         except:
             logger.error(traceback.format_exc())
             exit(0)

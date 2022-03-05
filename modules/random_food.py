@@ -17,7 +17,7 @@ from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import UserCalledCount
 from sagiri_bot.decorators import switch, blacklist
-from sagiri_bot.utils import update_user_call_count_plus
+from sagiri_bot.utils import update_user_call_count_plus, HelpPage, HelpPageElement
 
 saya = Saya.current()
 channel = Channel.current()
@@ -126,3 +126,31 @@ class RandomFood(AbstractHandler):
             cream = divider + str(random.choice(food[which]["cream"]))
         result = f"你的随机{'奶茶' if which == 'milk_tea' else '果茶'}是：\n" + temperature + sugar + addon + cream + body
         return result
+
+
+class RandomFoodHelp(HelpPage):
+    __description__ = "随机餐饮"
+    __trigger__ = "随机早餐/午餐/晚餐/奶茶/果茶"
+    __category__ = "utility"
+    __switch__ = None
+    __icon__ = "food"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="随机餐饮", is_title=True),
+            HelpPageElement(text="随机从菜单抽取菜名/饮品"),
+            HelpPageElement(icon="check-all", text="已全局开启"),
+            HelpPageElement(icon="alert", text="本项目不提供点菜/订餐服务"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n"
+                                                      "发送\"随机早餐\"或者\"随机午餐\"或者\"随机晚餐\""
+                                                      "或者\"随机奶茶\"或者\"随机果茶\"即可")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

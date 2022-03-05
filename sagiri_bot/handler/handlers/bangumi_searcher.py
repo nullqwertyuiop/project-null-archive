@@ -1,17 +1,14 @@
 import time
-import json
 import aiohttp
-from graia.ariadne.model import Friend
 from loguru import logger
-from PIL import Image as IMG
-from urllib.parse import quote
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
-from graia.broadcast.interrupt.waiter import Waiter
 from graia.ariadne.exception import AccountMuted
-from graia.broadcast.interrupt import InterruptControl
+from graia.broadcast.interrupt.waiter import Waiter
 from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.model import Friend
+from graia.broadcast.interrupt import InterruptControl
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.message.element import Plain, Image, At, Source
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
@@ -19,8 +16,8 @@ from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessa
 from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.utils import MessageChainUtils
 from sagiri_bot.decorators import switch, blacklist
-from sagiri_bot.utils import get_setting, sec_to_str
 from sagiri_bot.message_sender.strategy import Normal
+from sagiri_bot.utils import group_setting, sec_to_str
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.utils import update_user_call_count_plus
 from sagiri_bot.orm.async_orm import Setting, UserCalledCount
@@ -65,7 +62,7 @@ class BangumiSearcher(AbstractHandler):
         if message.asDisplay() == "搜番":
             if member and group:
                 await update_user_call_count_plus(group, member, UserCalledCount.search, "search")
-                if not await get_setting(group.id, Setting.bangumi_search):
+                if not await group_setting.get_setting(group.id, Setting.bangumi_search):
                     return MessageItem(MessageChain.create([Plain(text="该功能已关闭，请阅读文档或联系机器人管理员开启。")]), Normal())
                 try:
                     await app.sendGroupMessage(group, MessageChain.create([

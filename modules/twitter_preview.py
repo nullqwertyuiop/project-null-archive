@@ -24,12 +24,14 @@ from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_sender import MessageSender
-from sagiri_bot.utils import BuildImage
+from sagiri_bot.utils import BuildImage, HelpPage, HelpPageElement
+from statics.emoji.emoji import emoji_list
 
 saya = Saya.current()
 channel = Channel.current()
 core: AppCore = AppCore.get_core_instance()
 config = core.get_config()
+proxy = config.proxy if config.proxy != "proxy" else ''
 
 channel.name("TwitterPreview")
 channel.author("nullqwertyuiop")
@@ -74,12 +76,12 @@ class TwitterPreview(AbstractHandler):
     @staticmethod
     async def get_bytes(link: str) -> Optional[bytes]:
         async with aiohttp.ClientSession() as session:
-            async with session.get(link) as resp:
+            async with session.get(link, proxy=proxy) as resp:
                 if resp.status == 200:
                     return await resp.read()
 
     @staticmethod
-    async def func(app: Ariadne, resp: dict, target: Union[Group, Friend]):
+    async def func(app: Ariadne, resp: dict, target: Union[Group, Friend] = None, manual: bool = True):
         font = f"{os.getcwd()}/statics/fonts/NotoSansCJKsc-Medium.ttf"
         canvas_width = 700
         canvas_height = 0
@@ -91,15 +93,36 @@ class TwitterPreview(AbstractHandler):
         avatar.circle_new()
         name = BuildImage(700, 50, font=font, font_size=30, color="white")
         _name_canvas = BuildImage(700 - 150 - 30, 50, font=font, font_size=30, color="white")
-        _name = resp["includes"]["users"][0]['name']
-        if _name_canvas.check_font_size(_name):
-            _name = ""
+        _name_emoji = []
+        _name = ""
+        if _name_canvas.check_font_size(TwitterPreview.replace_emoji(resp["includes"]["users"][0]['name'])):
             for _char in resp["includes"]["users"][0]['name']:
+                if TwitterPreview.is_emoji(_char):
+                    _name_emoji.append((_name_canvas.font.getsize(
+                        _name)[0], _name_canvas.font.getsize("　")[0], ord(_char)))
+                    _char = "　"
                 if _name_canvas.check_font_size(_name + _char + "..."):
                     break
                 _name += _char
             _name += "..."
-        name.text((0, 0), _name, (0, 0, 0))
+        else:
+            for _char in resp["includes"]["users"][0]['name']:
+                if TwitterPreview.is_emoji(_char):
+                    _name_emoji.append((_name_canvas.font.getsize(
+                        _name)[0], _name_canvas.font.getsize("　")[0], ord(_char)))
+                    _char = "　"
+                _name += _char
+        await name.atext((0, 0), _name, (0, 0, 0))
+        for _emoji in _name_emoji:
+            file = f"{os.getcwd()}/statics/emoji/{_emoji[2]}.png"
+            if os.path.exists(file):
+                emoji = IMG.open(file).convert("RGBA")
+            else:
+                continue
+            location = (_emoji[0], 5)
+            size = min(_name_canvas.font.getsize("　"))
+            emoji = emoji.resize((size, size), IMG.ANTIALIAS)
+            name.markImg.paste(emoji, (location), mask=emoji)
         user = BuildImage(700, 150, font=font, font_size=25, color="white")
         await user.apaste(avatar, (30, 25), True)
         await user.apaste(name, (150, 38))
@@ -109,18 +132,56 @@ class TwitterPreview(AbstractHandler):
         line_template = BuildImage(canvas_width - 50 * 3, 60, font=font, font_size=40)
         text = resp["data"][0]["text"]
         if "entities" in resp["data"][0].keys():
-            for _url in resp["data"][0]["entities"]["urls"]:
-                text = text.replace(_url["url"], "").strip()
+            if "urls" in resp["data"][0]["entities"].keys():
+                for _url in resp["data"][0]["entities"]["urls"]:
+                    text = text.replace(_url["url"], "").strip()
         text_parts = text.split("\n")
         lines = []
+        _lines_emoji = [[]]
         for index, text_part in enumerate(text_parts):
             line = ""
             for _index, char in enumerate(text_part):
+                while len(_lines_emoji) < len(lines):
+                    _lines_emoji.append([])
+                emoji = False
+                _emoji = None
+                if TwitterPreview.is_emoji(char):
+                    emoji = True
+                    _emoji = ord(char)
+                    char = "　"
                 if not line_template.check_font_size(line):
-                    line += char
                     if _index == (len(text_part) - 1):
+                        if emoji:
+                            _lines_emoji[len(lines)].append(
+                                (
+                                    line_template.font.getsize(line)[0],
+                                    line_template.font.getsize("　")[0],
+                                    _emoji
+                                )
+                            )
+                        line += char
                         lines.append(line)
+                        _lines_emoji.append([])
+                        continue
+                    if emoji:
+                        _lines_emoji[len(lines)].append(
+                            (
+                                line_template.font.getsize(line)[0],
+                                line_template.font.getsize("　")[0],
+                                _emoji
+                            )
+                        )
+                    line += char
                     continue
+                _lines_emoji.append([])
+                if emoji:
+                    _lines_emoji[-1].append(
+                        (
+                            line_template.font.getsize(line)[0],
+                            line_template.font.getsize("　")[0],
+                            _emoji
+                        )
+                    )
                 lines.append(line)
                 line = ""
                 line += char
@@ -131,6 +192,17 @@ class TwitterPreview(AbstractHandler):
             for index, line in enumerate(lines):
                 line_canvas = BuildImage(
                     line_template.w + 50, line_template.h, font=font, font_size=40)
+                for _emoji in _lines_emoji[index]:
+                    if _emoji:
+                        file = f"{os.getcwd()}/statics/emoji/{_emoji[2]}.png"
+                        if os.path.exists(file):
+                            emoji = IMG.open(file).convert("RGBA")
+                        else:
+                            continue
+                        location = (_emoji[0], 10)
+                        size = min(line_canvas.font.getsize("　"))
+                        emoji = emoji.resize((size, size), IMG.ANTIALIAS)
+                        line_canvas.markImg.paste(emoji, location, mask=emoji)
                 await line_canvas.atext((0, 0), line, (0, 0, 0), "by_height")
                 await body_text.apaste(line_canvas, (0, (line_template.h + 5) * index - 5))
         canvas_height += body_text.h if body_text else 0
@@ -163,8 +235,8 @@ class TwitterPreview(AbstractHandler):
                             try:
                                 _vid_url = resp["data"][0]["entities"]["urls"][_index + offset]["expanded_url"]
                                 if re.match(
-                                    "(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)\/video\/\d+",
-                                    _vid_url
+                                        "(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)\/video\/\d+",
+                                        _vid_url
                                 ):
                                     break
                                 offset += 1
@@ -200,7 +272,7 @@ class TwitterPreview(AbstractHandler):
                             except KeyError:
                                 _gif_url = None
                         if _gif_url:
-                            media_bytes = await TwitterPreview.aget_video(_gif_url)
+                            media_bytes = (await TwitterPreview.aget_video(_gif_url)) if manual else None
                         gif = BuildImage(
                             _gif.width, _gif.height, background=gif)
                         _w = canvas_width - 30 * 2
@@ -281,100 +353,139 @@ class TwitterPreview(AbstractHandler):
         _h += 55
         await canvas.apaste(watermark, (canvas_width - 140 - 25, _h), True)
         await canvas.apaste(qr, (canvas_width - 165 - 140 - 25, _h), center_type='by_width')
-        await app.sendMessage(target, MessageChain.create([
-            Image(data_bytes=canvas.pic2bytes())
-        ]))
-        if media_bytes:
-            try:
-                await app.uploadFile(
-                    data=media_bytes[0],
-                    method=UploadMethod.Group if isinstance(target, Group) else UploadMethod.Friend,
-                    target=target,
-                    name=media_bytes[1]
-                )
-            except RemoteException as e:
-                if "upload check_security fail" in str(e):
-                    await app.sendMessage(
+
+        if not manual:
+            return canvas
+        else:
+            await app.sendMessage(target, MessageChain.create([
+                Image(data_bytes=canvas.pic2bytes())
+            ]))
+            if media_bytes:
+                msg = None
+                no_caching = False
+                try:
+                    await app.uploadFile(
+                        data=media_bytes[0],
+                        method=UploadMethod.Group if isinstance(target, Group) else UploadMethod.Friend,
                         target=target,
-                        message=MessageChain.create([
-                            Plain(text="安全检查失败，无法发送媒体文件")
-                        ])
+                        name=media_bytes[1]
                     )
-                else:
-                    await app.sendMessage(
-                        target=target,
-                        message=MessageChain.create([
-                            Plain(text="无法发送媒体文件，请检查群文件是否有足够空间或是否允许上传")
-                        ])
-                    )
-                logger.error(e)
-            except NotImplementedError:
-                await app.sendMessage(
-                    target=target,
-                    message=MessageChain.create([
-                        Plain(text="暂不支持在此上传视频文件")
-                    ])
-                )
-            except Exception as e:
-                await app.sendMessage(
-                    target=target,
-                    message=MessageChain.create([
-                        Plain(text="因遭遇其他错误无法发送媒体文件")
-                    ])
-                )
-                logger.error(e)
+                    no_caching = True
+                except RemoteException as e:
+                    if "upload check_security fail" in str(e):
+                        msg = [Plain(text="安全检查失败，无法发送媒体文件")]
+                    else:
+                        msg = [Plain(text="无法发送媒体文件，请检查群文件是否有足够空间或是否允许上传")]
+                    logger.error(e)
+                except NotImplementedError:
+                    msg = [Plain(text="暂不支持在此上传媒体文件")]
+                except Exception as e:
+                    msg = [Plain(text="因遭遇其他错误无法发送媒体文件")]
+                    logger.error(e)
+                finally:
+                    if not no_caching:
+                        if link := TwitterPreview.store_media(media_bytes):
+                            msg.append(Plain(text=f"\n媒体文件已缓存至 {link}"))
+                    if msg:
+                        await app.sendMessage(
+                            target=target,
+                            message=MessageChain.create(msg)
+                        )
 
     @staticmethod
-    async def get_tweet(app: Ariadne, message: str, target: Union[Group, Friend]):
-        requested_url = []
-        if short_match := re.findall(r"(?:https?:\/\/)?(?:www\.)?(t\.co\/[a-zA-Z0-9_.-]{10})", message):
-            for short_link in short_match:
-                if not (short_link.startswith("http://") or short_link.startswith("https://")):
-                    short_link = "https://" + short_link
-                async with aiohttp.ClientSession(headers=None) as session:
-                    async with session.get(short_link) as res:
-                        if res.status == 200:
-                            link = str(res.url)
-                            if re.match(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/\d+", link):
-                                requested_url.append(link)
+    def store_media(media_bytes: list):
+        try:
+            hashed = hash(media_bytes[0])
+            if not os.path.isdir(f'/www/wwwroot/cdn.nullqwertyuiop.me/cache'):
+                os.mkdir(f'/www/wwwroot/cdn.nullqwertyuiop.me/cache')
+            if not os.path.isdir(f'/www/wwwroot/cdn.nullqwertyuiop.me/cache/{hashed}'):
+                os.mkdir(f'/www/wwwroot/cdn.nullqwertyuiop.me/cache/{hashed}')
+            webroot = f'/www/wwwroot/cdn.nullqwertyuiop.me/cache/{hashed}/'
+            web = f'cdn.nullqwertyuiop.me/cache/{hashed}/'
+            with open(webroot + media_bytes[1], 'wb') as f:
+                f.write(media_bytes[0])
+                return web + media_bytes[1]
+        except Exception as e:
+            logger.error(e)
+            return None
+
+    @staticmethod
+    async def get_tweet(app: Ariadne, message: str, target: Union[Group, Friend] = None, manual: bool = True):
+        if manual:
+            requested_url = []
+            if short_match := re.findall(r"(?:https?:\/\/)?(?:www\.)?(t\.co\/[a-zA-Z0-9_.-]{10})", message):
+                for short_link in short_match:
+                    if not (short_link.startswith("http://") or short_link.startswith("https://")):
+                        short_link = "https://" + short_link
+                    async with aiohttp.ClientSession(headers=None) as session:
+                        async with session.get(short_link, proxy=proxy) as res:
+                            if res.status == 200:
+                                link = str(res.url)
+                                if re.match(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/\d+", link):
+                                    requested_url.append(link)
+                                else:
+                                    continue
                             else:
                                 continue
+            if match := re.findall(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/\d+", message):
+                for link in match:
+                    requested_url.append(link)
+            if not requested_url:
+                return None
+            if len(requested_url) > 1:
+                await app.sendMessage(target, MessageChain.create([
+                    Plain(text=f"收到 {len(requested_url)} 条推特链接，开始解析。")
+                ]))
+            for link in requested_url:
+                if match := re.compile(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)").search(link):
+                    status_id = match.group(1)
+                else:
+                    continue
+                async with aiohttp.ClientSession(headers=TwitterPreview.__headers) as session:
+                    async with session.get(
+                            f"https://api.twitter.com/2/tweets?ids={status_id}"
+                            f"&tweet.fields=text,created_at,public_metrics,entities"
+                            f"&expansions=attachments.media_keys,author_id"
+                            f"&media.fields=preview_image_url,duration_ms,type,url"
+                            f"&user.fields=profile_image_url",
+                            proxy=proxy
+                    ) as res:
+                        if res.status == 200:
+                            _resp = await res.json()
+                            if "errors" in _resp.keys():
+                                await app.sendMessage(target, MessageChain.create([
+                                    Plain(text=f"尝试取得 {link} 内容时出错")
+                                ]))
+                                continue
+                            resp = _resp
                         else:
+                            await app.sendMessage(target, MessageChain.create([
+                                Plain(text=f"尝试取得 {link} 内容时出错，错误代码为 {res.status}")
+                            ]))
                             continue
-        if match := re.findall(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/\d+", message):
-            for link in match:
-                requested_url.append(link)
-        if not requested_url:
-            return None
-        await app.sendMessage(target, MessageChain.create([
-            Plain(text=f"收到 {len(requested_url)} 条推特链接，开始解析。")
-        ]))
-        for link in requested_url:
-            if match := re.compile(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)").search(link):
+                await TwitterPreview.func(app, resp, target)
+        else:
+            if match := re.compile(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)").search(message):
                 status_id = match.group(1)
             else:
-                continue
+                return None
             async with aiohttp.ClientSession(headers=TwitterPreview.__headers) as session:
                 async with session.get(
                         f"https://api.twitter.com/2/tweets?ids={status_id}"
                         f"&tweet.fields=text,created_at,public_metrics,entities"
                         f"&expansions=attachments.media_keys,author_id"
                         f"&media.fields=preview_image_url,duration_ms,type,url"
-                        f"&user.fields=profile_image_url") as res:
+                        f"&user.fields=profile_image_url",
+                        proxy=proxy
+                ) as res:
                     if res.status == 200:
                         _resp = await res.json()
                         if "errors" in _resp.keys():
-                            await app.sendMessage(target, MessageChain.create([
-                                Plain(text=f"尝试取得 {link} 内容时出错")
-                            ]))
-                            continue
+                            return None
                         resp = _resp
                     else:
-                        await app.sendMessage(target, MessageChain.create([
-                            Plain(text=f"尝试取得 {link} 内容时出错，错误代码为 {res.status}")
-                        ]))
-                        continue
-            await TwitterPreview.func(app, resp, target)
+                        return None
+            return await TwitterPreview.func(app, resp, target, manual=False)
 
     @staticmethod
     def get_video_info(link: str):
@@ -389,3 +500,48 @@ class TwitterPreview(AbstractHandler):
         info = await loop.run_in_executor(None, TwitterPreview.get_video_info, link)
         if video := await TwitterPreview.get_bytes(info['url']):
             return [video, f"{info['display_id']}.{info['ext']}"]
+
+    @staticmethod
+    def is_emoji(char):
+        if char in emoji_list:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def replace_emoji(string):
+        result = ""
+        for char in string:
+            if TwitterPreview.is_emoji(char):
+                result += "　"
+            else:
+                result += char
+        return result
+
+
+class TwitterPreviewHelp(HelpPage):
+    __description__ = "推特链接解析"
+    __trigger__ = "发送链接自动解析"
+    __category__ = "utility"
+    __switch__ = None
+    __icon__ = "twitter"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="推特链接解析", is_title=True),
+            HelpPageElement(text="识别消息中的推特链接并自动生成该链接对应推文的预览图"),
+            HelpPageElement(icon="check-all", text="已全局开启"),
+            HelpPageElement(icon="alert", text="暂不支持手动关闭"),
+            HelpPageElement(icon="alert-circle", text="请勿使用本功能渲染不适合的内容，否则将永久撤回本功能使用权限"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n直接发送链接即可"),
+            HelpPageElement(icon="api", text="本功能依赖 Twitter v2 API，使用时请注意频率限制")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

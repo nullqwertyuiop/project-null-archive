@@ -18,7 +18,7 @@ from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.orm.async_orm import Setting
 from sagiri_bot.decorators import switch, blacklist
 # from sagiri_bot.static_datas import bilibili_partition_dict
-from sagiri_bot.utils import sec_format, get_setting
+from sagiri_bot.utils import sec_format, group_setting, HelpPage, HelpPageElement
 from modules.config import Config
 
 saya = Saya.current()
@@ -55,7 +55,7 @@ class BilibiliLinkResolve(AbstractHandler):
         if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
                                message.asDisplay()):
             if member and group:
-                if not await get_setting(group.id, Setting.bilibili_app_parse):
+                if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                     return None
             bv = "bv" + match[0]
             av = BilibiliLinkResolve.bv_to_av(bv)
@@ -67,7 +67,7 @@ class BilibiliLinkResolve(AbstractHandler):
         elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
                                  message.asDisplay()):
             if member and group:
-                if not await get_setting(group.id, Setting.bilibili_app_parse):
+                if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                     return None
             av = match[0]
             info = await BilibiliLinkResolve.get_info(av)
@@ -77,7 +77,7 @@ class BilibiliLinkResolve(AbstractHandler):
             )
         elif match := re.findall("((?:http:|https:\/\/)?(?:[^.]+\.)?b23\.tv\/[\w\d]+)", message.asDisplay()):
             if member and group:
-                if not await get_setting(group.id, Setting.bilibili_app_parse):
+                if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                     return None
             match = match[0]
             if not (match.startswith("http://") or match.startswith("https://")):
@@ -108,7 +108,7 @@ class BilibiliLinkResolve(AbstractHandler):
             if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
                                    message.asDisplay()):
                 if member and group:
-                    if not await get_setting(group.id, Setting.bilibili_app_parse):
+                    if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                         return None
                 bv = "bv" + match[0]
                 av = BilibiliLinkResolve.bv_to_av(bv)
@@ -120,7 +120,7 @@ class BilibiliLinkResolve(AbstractHandler):
             elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
                                      message.asDisplay()):
                 if member and group:
-                    if not await get_setting(group.id, Setting.bilibili_app_parse):
+                    if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                         return None
                 av = match[0]
                 info = await BilibiliLinkResolve.get_info(av)
@@ -131,7 +131,7 @@ class BilibiliLinkResolve(AbstractHandler):
             elif url := re.compile(".*url=\"((http:|https:\/\/)?[^.]+\.bilibili\.com\/video\/(BV|bv).*)\" .*").search(
                     xml):
                 if member and group:
-                    if not await get_setting(group.id, Setting.bilibili_app_parse):
+                    if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                         return None
                 url = url.group(1).split(" ", maxsplit=1)[0]
                 bv = url.split("?")[0].split("/")[-1]
@@ -143,7 +143,7 @@ class BilibiliLinkResolve(AbstractHandler):
                 )
             elif match := re.findall("((?:http:|https:\/\/)?(?:[^.]+\.)?b23\.tv\/[\w\d]+)", message.asDisplay()):
                 if member and group:
-                    if not await get_setting(group.id, Setting.bilibili_app_parse):
+                    if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                         return None
                 match = match[0]
                 if not (match.startswith("http://") or match.startswith("https://")):
@@ -266,3 +266,37 @@ class BilibiliLinkResolve(AbstractHandler):
             return MessageChain.create([Plain(text="解析失败，请联系机器人管理员。"),
                                         Plain(text=str(e))])
         return MessageChain.create(chain_list)
+
+
+class BilibiliLinkResolveHelp(HelpPage):
+    __description__ = "B 站链接解析"
+    __trigger__ = "发送链接自动解析"
+    __category__ = "utility"
+    __switch__ = Setting.bilibili_app_parse
+    __icon__ = "link"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        if self.group or self.member:
+            if not await group_setting.get_setting(self.group.id, self.__switch__):
+                status = HelpPageElement(icon="toggle-switch-off", text="已关闭")
+            else:
+                status = HelpPageElement(icon="toggle-switch", text="已开启")
+        else:
+            status = HelpPageElement(icon="check-all", text="已全局开启")
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="B 站链接解析", is_title=True),
+            HelpPageElement(text="识别消息中的 B 站链接并自动解析该链接"),
+            status,
+            HelpPageElement(icon="pound-box", text="更改设置需要权限不记得多少级"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n"
+                                                      "直接发送 B 站链接即可"),
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

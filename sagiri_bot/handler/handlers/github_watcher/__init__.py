@@ -1,48 +1,72 @@
+import asyncio
+import json
+from datetime import datetime, timedelta
+from json import JSONDecodeError
+from pathlib import Path
+
+import aiohttp
+from aiohttp import BasicAuth
 from graia.ariadne.app import Ariadne, Friend
 from graia.ariadne.event.message import Group, Member, FriendMessage, GroupMessage
+from graia.ariadne.exception import UnknownTarget, AccountMuted
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+# from graia.ariadne.message.element import ForwardNode, Forward
 from graia.ariadne.model import MemberPerm
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.scheduler import timers
+from graia.scheduler.saya import SchedulerSchema
+from loguru import logger
 
+from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
-from sagiri_bot.message_sender.strategy import QuoteSource
-from sagiri_bot.utils import user_permission_require
-from .github_watcher import GithubWatcher
+from sagiri_bot.message_sender.strategy import QuoteSource, Normal
+from sagiri_bot.utils import user_permission_require, MessageChainUtils
 
 saya = Saya.current()
 channel = Channel.current()
+bcc = saya.broadcast
+core: AppCore = AppCore.get_core_instance()
+app = core.get_app()
+loop = core.get_loop()
+config = core.get_config()
+proxy = config.proxy if config.proxy != "proxy" else ''
 
-channel.name("GithubWatcher")
+channel.name("self")
 channel.author("nullqwertyuiop")
 channel.description("/github-watch enable [3级权限]\n"
                     "/github-watch disable [3级权限]\n"
                     "/github-watch add {repo} [repo]+ [2级或管理员权限]\n"
                     "/github-watch remove {repo} [repo]+ [2级或管理员权限]\n"
                     "/github-watch check [任何人]\n"
-                    "/github-watch cache {update/store} [2级或管理员权限]")
+                    "/github-watch cache {update/store} [2级或管理员权限]\n")
 
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
-async def github_watcher_friend_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await GithubWatcherEntryPoint.real_handle(app, message, friend=friend):
-        await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
-
-
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def github_watcher_group_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await GithubWatcherEntryPoint.real_handle(app, message, group=group, member=member):
-        await MessageSender(result.strategy).send(app, result.message, message, group, member)
-
-
-class GithubWatcherEntryPoint(AbstractHandler):
-    __name__ = "GithubWatcherEntryPoint"
+class GithubWatcher(AbstractHandler):
+    __name__ = "GithubWatcher"
     __description__ = "Github 订阅 Handler"
     __usage__ = "None"
+    __cached = {}
+    if config.functions['github']['username'] != "username" and config.functions['github']['token'] != 'token':
+        __auth = True
+        __session = aiohttp.ClientSession(auth=BasicAuth(
+            login=config.functions['github']['username'],
+            password=config.functions['github']['token']
+        ))
+    else:
+        __auth = False
+        __session = aiohttp.ClientSession()
+    __first_warned = False
+
+    __status = True
+    __base_url = "https://api.github.com"
+    __events_url = "/repos/{owner}/{repo}/events"
+    __is_running = False
+    initialize = False
 
     @staticmethod
     @switch()
@@ -50,58 +74,63 @@ class GithubWatcherEntryPoint(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
         pass
 
-    @staticmethod
     @switch()
     @blacklist()
-    async def real_handle(app: Ariadne, message: MessageChain, group: Group = None,
+    async def real_handle(self, app: Ariadne, message: MessageChain, group: Group = None,
                           member: Member = None, friend: Friend = None) -> MessageItem:
         commands = {
             "enable": {
                 "permission": [3, []],
+                "permission_nl": "3 级权限",
                 "manual": "/github-watch enable",
                 "description": "启用 Github 订阅功能",
-                "func": GithubWatcher.enable
+                "func": self.enable
             },
             "disable": {
                 "permission": [3, []],
+                "permission_nl": "3 级权限",
                 "manual": "/github-watch disable",
                 "description": "禁用 Github 订阅功能",
-                "func": GithubWatcher.disable
+                "func": self.disable
             },
             "add": {
                 "permission": [2, (MemberPerm.Administrator, MemberPerm.Owner)],
+                "permission_nl": "2 级或群管理员及以上权限",
                 "manual": "/github-watch add {repo} [repo]+",
                 "description": "订阅仓库变动，可同时订阅多个仓库",
-                "func": GithubWatcher.add
+                "func": self.add
             },
             "remove": {
                 "permission": [2, (MemberPerm.Administrator, MemberPerm.Owner)],
+                "permission_nl": "2 级或群管理员及以上权限",
                 "manual": "/github-watch remove {repo} [repo]+",
                 "description": "取消订阅仓库变动，可同时取消订阅多个仓库",
-                "func": GithubWatcher.remove
+                "func": self.remove
             },
             "check": {
                 "permission": [1, (MemberPerm.Member, MemberPerm.Administrator, MemberPerm.Owner)],
+                "permission_nl": "任何人",
                 "manual": "/github-watch check",
                 "description": "手动查看仓库订阅列表",
-                "func": GithubWatcher.check
+                "func": self.check
             },
             "cache": {
                 "permission": [2, (MemberPerm.Administrator, MemberPerm.Owner)],
+                "permission_nl": "2 级或群管理员及以上权限",
                 "manual": "/github-watch cache {update/store}",
                 "description": "更新/储存缓存",
-                "func": GithubWatcher.cache
+                "func": self.cache
             }
         }
         if message.asDisplay().startswith("/github-watch"):
-            if not GithubWatcher.initialize:
-                GithubWatcher.update_cache()
-                GithubWatcher.initialize = True
+            if not self.initialize:
+                self.update_cache()
+                for repo in self.__cached.keys():
+                    self.__cached[repo]['enabled'] = True
+                self.store_cache()
+                self.initialize = True
             args = message.asDisplay().split(" ", maxsplit=1)
             if len(args) == 1:
-<<<<<<< Updated upstream
-                ...
-=======
                 msg = [Plain(text="缺少参数\n\n")]
                 for func in commands.keys():
                     msg.append(Plain(text=(f"/github-watch {func}\n"
@@ -112,7 +141,6 @@ class GithubWatcherEntryPoint(AbstractHandler):
                     await MessageChainUtils.messagechain_to_img(
                         MessageChain.create(msg)
                     ), QuoteSource())
->>>>>>> Stashed changes
             _, args = args
             name = args.split(" ", maxsplit=1)[0]
             arg = ''.join(args.split(" ", maxsplit=1)[1:])
@@ -129,8 +157,6 @@ class GithubWatcherEntryPoint(AbstractHandler):
             return MessageItem(await commands[name]['func'](
                 app=app, group=group, friend=friend, arg=arg
             ), QuoteSource())
-<<<<<<< Updated upstream
-=======
 
     async def enable(self, **kwargs):
         self.__status = True
@@ -374,7 +400,7 @@ class GithubWatcherEntryPoint(AbstractHandler):
     @staticmethod
     def generate_plain(event: dict):
         actor = event['actor']['display_login']
-        event_time = datetime.fromisoformat(event['created_at'] + '+08:00') \
+        event_time = (datetime.strptime(event['created_at'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=8)) \
             .strftime('%Y-%m-%d %H:%M:%S')
         resp = None
         if event['type'] == 'IssuesEvent':
@@ -531,34 +557,37 @@ class GithubWatcherEntryPoint(AbstractHandler):
                         else:
                             res.append(Plain(text=events["message"]))
                     if res:
-                        fwd_nodes = [
-                            ForwardNode(
-                                senderId=config.bot_qq,
-                                time=datetime.now(),
-                                senderName="[Index]",
-                                messageChain=MessageChain.create(Plain(text=f"仓库：{repo[0]}/{repo[1]}\n")),
-                            )
-                        ]
-                        for index, element in enumerate(res):
-                            fwd_nodes.append(
-                                ForwardNode(
-                                    senderId=config.bot_qq,
-                                    time=datetime.now() + timedelta(minutes=index + 1),
-                                    senderName=f"[Event {index + 1}]",
-                                    messageChain=MessageChain.create(element),
-                                )
-                            )
-                        fwd_nodes.append(
-                            ForwardNode(
-                                senderId=config.bot_qq,
-                                time=datetime.now(),
-                                senderName="[Time]",
-                                messageChain=MessageChain.create(Plain(
-                                    text=f"获取时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                                ),
-                            )
-                        )
-                        res = MessageChain.create(Forward(nodeList=fwd_nodes))
+                        res.insert(0, Plain(text=f"仓库：{repo[0]}/{repo[1]}\n"))
+                        res.append(Plain(text=f"----------\n获取时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"))
+                        res = MessageChain.create(res)
+                        # fwd_nodes = [
+                        #     ForwardNode(
+                        #         senderId=config.bot_qq,
+                        #         time=datetime.now(),
+                        #         senderName="Github 订阅",
+                        #         messageChain=MessageChain.create(Plain(text=f"仓库：{repo[0]}/{repo[1]}\n")),
+                        #     )
+                        # ]
+                        # for index, element in enumerate(res):
+                        #     fwd_nodes.append(
+                        #         ForwardNode(
+                        #             senderId=config.bot_qq,
+                        #             time=datetime.now() + timedelta(minutes=index + 1),
+                        #             senderName="Github 订阅",
+                        #             messageChain=MessageChain.create(element),
+                        #         )
+                        #     )
+                        # fwd_nodes.append(
+                        #     ForwardNode(
+                        #         senderId=config.bot_qq,
+                        #         time=datetime.now(),
+                        #         senderName="Github 订阅",
+                        #         messageChain=MessageChain.create(Plain(
+                        #             text=f"获取时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                        #         ),
+                        #     )
+                        # )
+                        # res = MessageChain.create(Forward(nodeList=fwd_nodes))
                         if manual:
                             self.__is_running = False
                             return MessageItem(res, Normal())
@@ -591,6 +620,7 @@ async def github_schedule(app: Ariadne):
     except:
         pass
 
+
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def github_watcher_friend_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await gw.real_handle(app, message, friend=friend):
@@ -601,4 +631,3 @@ async def github_watcher_friend_handler(app: Ariadne, message: MessageChain, fri
 async def github_watcher_group_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await gw.real_handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
->>>>>>> Stashed changes

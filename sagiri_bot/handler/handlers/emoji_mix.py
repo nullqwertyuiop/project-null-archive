@@ -93,10 +93,10 @@ class EmojiMix(AbstractHandler):
         # logger.info(url2)
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(url1) as resp:
+                async with session.get(url1, proxy=proxy) as resp:
                     if resp.status == 200:
                         return await resp.read()
-                async with session.get(url2) as resp:
+                async with session.get(url2, proxy=proxy) as resp:
                     if resp.status == 200:
                         return await resp.read()
                 return '出错了，可能不支持该emoji组合'

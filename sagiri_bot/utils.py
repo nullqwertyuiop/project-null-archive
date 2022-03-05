@@ -1,20 +1,25 @@
+import ast
 import os
 import io
 import math
+import re
 
+import numpy as np
 import yaml
 import json
 import base64
 import aiohttp
 import asyncio
 import datetime
+import more_itertools as mit
 from io import BytesIO
 from pathlib import Path
 from loguru import logger
 from PIL import Image as IMG
 from sqlalchemy import select
-from typing import Tuple, Optional, Union, List, Literal
 from PIL import ImageDraw, ImageFont, ImageFilter
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from typing import Tuple, Optional, Union, List, Literal, Dict
 
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.chain import MessageChain
@@ -22,12 +27,64 @@ from graia.ariadne.message.element import Plain, Image
 from graia.ariadne.event.message import Group, Member, Friend
 from sqlalchemy.exc import IntegrityError
 
-from sagiri_bot.orm import orm_cache
 from sagiri_bot.orm.async_orm import orm
 from sagiri_bot.config import GlobalConfig
 from sagiri_bot.orm.async_orm import Setting, UserPermission, UserCalledCount, FunctionCalledRecord
 
 yaml.warnings({'YAMLLoadWarning': False})
+
+
+class GroupSetting(object):
+    data: Dict[int, Dict[str, Union[bool, str]]]
+
+    def __init__(self):
+        self.data = {}
+
+    async def data_init(self):
+        columns = {
+            i: Setting.__dict__[i]
+            for i in Setting.__dict__.keys() if isinstance(Setting.__dict__[i], InstrumentedAttribute)
+        }
+        column_names = list(columns.keys())
+        column_names.sort()
+        datas = await orm.fetchall(
+            select(
+                Setting.group_id,
+                *([columns[name] for name in column_names])
+            )
+        )
+        for data in datas:
+            self.data[data[0]] = dict(zip(column_names, data[1:]))
+
+    async def get_setting(self, group: Union[Group, int], setting: InstrumentedAttribute) -> Union[bool, str]:
+        setting_name = str(setting).split('.')[1]
+        if isinstance(group, Group):
+            group = group.id
+        if self.data.get(group, None):
+            if res := self.data[group].get(setting_name):
+                return res
+        else:
+            self.data[group] = {}
+        if result := await orm.fetchone(select(setting).where(Setting.group_id == group)):
+            self.data[group][setting_name] = result[0]
+            return result[0]
+        else:
+            raise ValueError(f"未找到 {group} -> {str(setting)} 结果！请检查数据库！")
+
+    async def modify_setting(
+        self, group: Union[Group, int], setting: Union[InstrumentedAttribute, str], new_value: Union[bool, str]
+    ):
+        setting_name = str(setting).split('.')[1] if isinstance(setting, InstrumentedAttribute) else setting
+        print("modify:", setting_name)
+        if isinstance(group, Group):
+            group = group.id
+        if self.data.get(group, None):
+            self.data[group][setting_name] = new_value
+        else:
+            self.data[group] = {setting_name: new_value}
+
+
+group_setting = GroupSetting()
 
 
 def sec_format(secs: int) -> str:
@@ -70,15 +127,10 @@ def get_config(config: str):
 async def get_setting(group: Union[Group, int], setting) -> Union[bool, str]:
     if isinstance(group, Group):
         group = group.id
-    setting = str(setting).split(".", maxsplit=1)[1]
-    # if result := await orm.fetchone(select(setting).where(Setting.group_id == group)):
-    #     return result[0]
-    # else:
-    #     raise ValueError(f"未找到 {group} -> {str(setting)} 结果！请检查数据库！")
-    try:
-        return orm_cache[group][setting]
-    except KeyError:
-        raise KeyError(f"未找到 {group} -> {str(setting)} 结果！请检查 ORM 缓存！")
+    if result := await orm.fetchone(select(setting).where(Setting.group_id == group)):
+        return result[0]
+    else:
+        raise ValueError(f"未找到 {group} -> {str(setting)} 结果！请检查数据库！")
 
 
 async def update_user_call_count_plus(
@@ -136,7 +188,7 @@ async def get_admins(group: Group) -> list:
 async def online_notice(app: Ariadne):
     group_list = await app.getGroupList()
     for group in group_list:
-        if await get_setting(group.id, Setting.online_notice):
+        if await group_setting.get_setting(group.id, Setting.online_notice):
             await app.sendGroupMessage(group, MessageChain.create([Plain(text="Bot 上线。")]))
 
 
@@ -1063,6 +1115,240 @@ class BuildImage:
             self.markImg = self.markImg.resize((r2, r2), IMG.ANTIALIAS)
         ellipse_box = [0, 0, r2 - 2, r2 - 2]
         self.draw_ellipse(self.markImg, ellipse_box, width=1)
+
+
+class HelpPageElement:
+    __icon_base_dir = os.getcwd() + '/statics/icon/'
+    __icon_format = '.png'
+    """
+    帮助页面元素
+    """
+
+    def __init__(
+            self,
+            icon: str = None,
+            text: str = None,
+            is_title: bool = False,
+            font: str = None,
+            description: str = None
+    ):
+        self.icon = icon
+        self.raw_text = text
+        _split_text = list(
+            filter(None, (re.split('(?:(<.*?>)(.*?)(<\/>)){1}?', text.replace('\n', '\\n'), flags=re.M))))
+        self.text_list = []
+        self.text_only = []
+        self.text_arg = []
+        for _index, _text in enumerate(_split_text):
+            if not re.match('(<.*>){1}?', _text):
+                _text = _text.split('\\n')
+                for _item in _text:
+                    self.text_list.append((_index, _item))
+            else:
+                self.text_arg.append((_index, _text))
+                self.text_list.append((_index, _text))
+        self.text_only = [
+            text for text in self.text_list if not re.match('(<.*>){1}?', text[1])]
+        self.is_title = is_title
+        self.font = font if font else f"{os.getcwd()}/statics/fonts/NotoSansCJKsc-Medium.ttf"
+        self.description = description
+        if self.is_title:
+            self.size = 50
+        else:
+            self.size = 30
+        self.size_description = 25
+
+    def build_icon(self) -> BuildImage:
+        if os.path.exists(self.__icon_base_dir + self.icon + self.__icon_format):
+            return BuildImage(
+                w=0,
+                h=0,
+                background=self.__icon_base_dir + self.icon + self.__icon_format,
+                is_alpha=True
+            )
+
+    def build_text(self, text_list: List, size: int, text_color: tuple) -> List:
+        font = ImageFont.truetype(self.font, size=size)
+        line_template = BuildImage(
+            640 - 50 * 3, font.getsize("　")[1], color=(255, 255, 255), font_size=size)
+        color = text_color
+        arg_line = False
+        used = 0
+        result = []
+        for text in text_list:
+            remain = line_template.w
+            if re.match('(<.*?>){1}?', text[1]):
+                args = text[1][1:-1].split(",")
+                for arg in args:
+                    arg = arg.strip()
+                    if arg.startswith('color='):
+                        color = ast.literal_eval(arg[6:15])
+                        if not isinstance(color, tuple) and color.startswith('#'):
+                            _color = color[1:]
+                            color = (
+                                int(_color[0:2], 16),
+                                int(_color[2:4], 16),
+                                int(_color[4:6], 16)
+                            )
+                    elif arg == "/":
+                        color = text_color
+                arg_line = True
+                continue
+            if not arg_line:
+                remain = line_template.w
+            else:
+                arg_line = False
+                remain = remain - used
+            stashed = text[1]
+            while True:
+                line = ""
+                remain_line = ""
+                _temp_build_image = BuildImage(
+                    w=remain,
+                    h=line_template.h,
+                    color=(255, 255, 255),
+                    font=self.font,
+                    font_size=size
+                )
+                for char in stashed:
+                    if not _temp_build_image.check_font_size(line):
+                        line += char
+                        continue
+                    remain_line += char
+                stashed = remain_line
+                line_image = BuildImage(
+                    w=remain + 50,
+                    h=line_template.h,
+                    color=(255, 255, 255),
+                    font=self.font,
+                    font_size=size
+                )
+                line_image.text((0, -2), line, color)
+                line_image = self.crop_border(line_image)
+                used = font.getsize(line)[0]
+                result.append(line_image)
+                remain = line_template.w
+                if not remain_line:
+                    break
+        return result
+
+    def compose(self) -> BuildImage:
+        to_compose = self.build_text(
+            self.text_list,
+            self.size,
+            (63, 63, 63)
+        )
+        if self.description:
+            to_compose += self.build_text(
+                [(0, self.description)],
+                self.size_description,
+                (192, 192, 192)
+            )
+        text = self.compose_text(to_compose)
+        icon_size = 50
+        canvas = BuildImage(640, max(text.h, icon_size))
+        if self.icon:
+            icon = self.build_icon()
+            icon.resize(w=icon_size, h=icon_size)
+            canvas.paste(icon, (math.ceil((100 - icon_size) / 2),
+                                0), alpha=True, center_type="by_height")
+        canvas.paste(text, (100, 0), center_type="by_height")
+        return canvas
+
+    @staticmethod
+    def compose_text(text_images: List) -> BuildImage:
+        lines = [text_images[0]]
+        last_width = 0
+        base_image = text_images[0]
+        for index, text_image in enumerate(text_images):
+            if text_image.w >= last_width and index != 0:
+                last_width = text_image.w
+                lines.append(text_image)
+                base_image = text_image
+                continue
+            last_width = text_image.w
+            base_image.paste(text_image, (540 - text_image.w, 0))
+        if base_image not in lines:
+            lines.append(base_image)
+        line_canvas = BuildImage(
+            w=lines[0].w,
+            h=sum([x.h for x in lines]) + 10 * (len(lines) - 1),
+            color=(255, 255, 255))
+        pos_y = 0
+        for index, line in enumerate(lines):
+            line_canvas.paste(line, (0, pos_y))
+            pos_y += line.h + 10
+        return line_canvas
+
+    @staticmethod
+    def crop_border(image: BuildImage):
+        img_array = np.array(image.markImg)
+        empty_rows = []
+        for row, y in enumerate(img_array):
+            has_data = False
+            for x in y:
+                if x[0] == x[1] == x[2] == 255:
+                    continue
+                else:
+                    has_data = True
+            if not has_data:
+                empty_rows.append(row)
+        pre_process = [list(group)
+                       for group in mit.consecutive_groups(empty_rows)]
+        if pre_process:
+            if len(pre_process) == 1:
+                upper = max(pre_process[0])
+                keep = img_array[upper + 1:]
+            else:
+                for index, i in enumerate(pre_process):
+                    if index == 0:
+                        pre_process[index] = max(i)
+                    else:
+                        pre_process[index] = min(i)
+                upper = pre_process[0]
+                lower = pre_process[-1]
+                keep = img_array[upper + 1:lower]
+            img = IMG.fromarray(keep)
+            image.markImg = img
+            image.w = img.width
+            image.h = img.height
+        return image
+
+
+class HelpPage:
+    """
+    帮助页面
+    """
+    __description__ = None
+    __trigger__ = None
+    __category__ = None
+    __switch__ = None
+    __icon__ = None
+
+    def __init__(
+            self,
+            elements: List[HelpPageElement] = None
+    ):
+        self.elements = elements
+        self.__rendered_element = []
+
+    async def compose(self):
+        for element in self.elements:
+            loop = asyncio.get_event_loop()
+            self.__rendered_element.append(await loop.run_in_executor(None, element.compose))
+        canvas = BuildImage(w=max(
+            [x.w for x in self.__rendered_element]
+        ),
+            h=sum(
+                [y.h for y in self.__rendered_element]
+            ) + 30 * (len(self.__rendered_element) + 1),
+            color=(255, 255, 255)
+        )
+        pos_y = 30
+        for element in self.__rendered_element:
+            await canvas.apaste(element, (0, pos_y))
+            pos_y += element.h + 30
+        return canvas
 
 
 async def get_avatar(qq: Union[int, Member, Friend, Group], size: int = 640) -> Optional[bytes]:

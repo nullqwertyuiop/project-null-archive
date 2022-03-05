@@ -11,15 +11,13 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from sqlalchemy import select
 
+from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
-from sagiri_bot.orm.async_orm import orm, Setting, UsageRecord
-from sagiri_bot.decorators import switch, blacklist
-from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount, HelpPage, HelpPageElement
 
 saya = Saya.current()
 channel = Channel.current()
@@ -137,3 +135,29 @@ class ClowCard(AbstractHandler):
         #          cord_usage[pool]: usage + 1,
         #          "last_date": current_date})
         return resp
+
+
+class ClowCardHelp(HelpPage):
+    __description__ = "库洛牌"
+    __trigger__ = "\"库洛牌\"或者\"小樱牌\"或者\"透明牌\""
+    __category__ = "entertainment"
+    __switch__ = None
+    __icon__ = "cards-playing-diamond"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="库洛牌", is_title=True),
+            HelpPageElement(text="随机抽取一张\"库洛牌\"或者\"小樱牌\"或者\"透明牌\""),
+            HelpPageElement(icon="check-all", text="已全局开启"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n直接发送\"库洛牌\"或者\"小樱牌\"或者\"透明牌\"即可"),
+            HelpPageElement(icon="alert", text="不要因为抽不到好卡就把我举报了喂！")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

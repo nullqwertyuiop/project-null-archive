@@ -17,6 +17,7 @@ from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.utils import HelpPage, HelpPageElement
 
 saya = Saya.current()
 channel = Channel.current()
@@ -102,3 +103,28 @@ class ImageToURLHandler(AbstractHandler):
             log_file.write(f"{user.id}: {image.uuid}.{img_suffix}\n")
         log_file.close()
         return chain
+
+
+class ImageToURLHelp(HelpPage):
+    __description__ = "图床"
+    __trigger__ = ""
+    __category__ = "experimental"
+    __switch__ = None
+    __icon__ = "cloud-upload"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="图床", is_title=True),
+            HelpPageElement(text="将图片上传至 Null 的图床服务"),
+            HelpPageElement(icon="check", text="可手动开启"),
+            HelpPageElement(icon="lock", text="实验性功能，无使用示例")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

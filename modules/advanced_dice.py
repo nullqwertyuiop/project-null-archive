@@ -1,3 +1,4 @@
+import asyncio
 import re
 import random
 
@@ -9,7 +10,7 @@ from graia.ariadne.message.element import Plain
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from sagiri_bot.utils import get_setting
+from sagiri_bot.utils import group_setting, HelpPage, HelpPageElement
 from sagiri_bot.orm.async_orm import Setting
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
@@ -50,7 +51,7 @@ class AdvancedDice(AbstractHandler):
         if re.match(r"(\.|。)ra(\D+)(\d+)", message.asDisplay()):
             print(message.asDisplay())
             if member and group:
-                if not await get_setting(group.id, Setting.dice):
+                if not await group_setting.get_setting(group.id, Setting.dice):
                     return MessageItem(MessageChain.create([Plain(text="骰子功能尚未开启。")]), QuoteSource())
                 else:
                     return MessageItem(MessageChain.create([
@@ -90,3 +91,36 @@ class AdvancedDice(AbstractHandler):
             return f"{text} 检定：D{max_point}={point}/{dice}【大失败】"
         else:
             return f"{text} 检定[Bug]：D{max_point}={point}/{dice}【请联系机器人管理员】"
+
+
+class AdvancedDiceHelp(HelpPage):
+    __description__ = "简易骰子"
+    __trigger__ = ".ra检定65"
+    __category__ = "utility"
+    __switch__ = Setting.dice
+    __icon__ = "dice-6"
+
+    def __init__(self, group: Group = None, member: Member = None, friend: Friend = None):
+        super().__init__()
+        self.__help__ = None
+        self.group = group
+        self.member = member
+        self.friend = friend
+
+    async def compose(self):
+        if self.group or self.member:
+            if not await group_setting.get_setting(self.group.id, self.__switch__):
+                status = HelpPageElement(icon="toggle-switch-off", text="已关闭")
+            else:
+                status = HelpPageElement(icon="toggle-switch", text="已开启")
+        else:
+            status = HelpPageElement(icon="check-all", text="已全局开启")
+        self.__help__ = [
+            HelpPageElement(icon=self.__icon__, text="简易骰子", is_title=True),
+            HelpPageElement(text="投掷一面可自定义面数的骰子（最高支持 100 面）"),
+            status,
+            HelpPageElement(icon="pound-box", text="更改设置需要权限不记得多少级"),
+            HelpPageElement(icon="lightbulb-on", text="使用示例：\n.ra检定65")
+        ]
+        super().__init__(self.__help__)
+        return await super().compose()

@@ -10,11 +10,11 @@ from graia.ariadne.event.message import Group, Member
 
 from .commands import *
 from sagiri_bot.orm.async_orm import orm
+from sagiri_bot.utils import group_setting
 from sagiri_bot.utils import user_permission_require
 from sagiri_bot.message_sender.message_sender import MessageItem
 from sagiri_bot.message_sender.strategy import Normal, QuoteSource
 from sagiri_bot.orm.async_orm import Setting, UserPermission, BlackList
-from ..orm import update_orm_cache
 
 
 class BlackListType(Enum):
@@ -57,7 +57,7 @@ async def execute_setting_update(group: Group, member: Member, command: str) -> 
                     if await user_permission_require(group, member, command_index[func].level):
                         try:
                             await orm.insert_or_update(Setting, [Setting.group_id == group.id], {func: value})
-                            await update_orm_cache()
+                            await group_setting.modify_setting(group, func, value)
                             success_commands.append(f"{func} -> {value}")
                         except Exception as e:
                             error_commands.append((command, str(e)))
