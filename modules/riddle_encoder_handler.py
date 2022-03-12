@@ -4,6 +4,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -26,14 +27,30 @@ channel.name("RiddleEncoder")
 channel.author("nullqwertyuiop")
 channel.description("加密通话")
 
+twilight = Twilight(
+    [
+        RegexMatch(r"加密通话#(编码|解码|encode|decode)#(.*)")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def riddle_encoder_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await RiddleEncoderHandler.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def riddle_encoder_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await RiddleEncoderHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

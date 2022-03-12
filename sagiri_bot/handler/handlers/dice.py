@@ -1,6 +1,7 @@
 import re
 import random
 
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.element import Plain
@@ -23,8 +24,19 @@ channel.name("Dice")
 channel.author("SAGIRI-kawaii")
 channel.description("一个简单的投骰子插件，发送 `{times}d{range}` 即可")
 
+twilight = Twilight(
+    [
+        RegexMatch(r"[0-9]+d[0-9]+")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def dice(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await Dice.handle(app, message, group, member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

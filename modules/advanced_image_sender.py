@@ -7,6 +7,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, WildcardMatch, SpacePolicy
 from graia.ariadne.model import Friend, MemberPerm
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -32,8 +33,20 @@ channel.name("AdvancedImageSender")
 channel.author("nullqwertyuiop")
 channel.description("高级(不)的色图插件")
 
+twilight = Twilight(
+    [
+        UnionMatch("/setu", ".setu").space(SpacePolicy.NOSPACE),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def image_sender_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await AdvancedImageSenderHandler.handle(app, message, group, member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

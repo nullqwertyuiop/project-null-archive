@@ -1,6 +1,8 @@
 import json
 import aiohttp
 import traceback
+
+from graia.ariadne.message.parser.twilight import Twilight, ElementMatch, WildcardMatch, MatchResult
 from loguru import logger
 from sqlalchemy import select
 from tencentcloud.common import credential
@@ -37,10 +39,23 @@ channel.description("一个可以实现智能回复的插件，在群中发送 `
 config = AppCore.get_core_instance().get_config()
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def chat_reply(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await ChatReply.handle(app, message, group, member):
-        await MessageSender(result.strategy).send(app, result.message, message, group, member)
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[
+            Twilight(
+                [
+                    "at" @ ElementMatch(At),
+                    WildcardMatch()
+                ]
+            )
+        ]
+    )
+)
+async def chat_reply(app: Ariadne, message: MessageChain, at: MatchResult, group: Group, member: Member):
+    if at.result.target == config.bot_qq:
+        if result := await ChatReply.handle(app, message, group, member):
+            await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
 class ChatReply(AbstractHandler):
@@ -52,12 +67,9 @@ class ChatReply(AbstractHandler):
     @switch()
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group, member: Member):
-        if message.has(At) and message.get(At)[0].target == config.bot_qq:
-            await update_user_call_count_plus(group, member, UserCalledCount.at, "at")
-            content = "".join(plain.text for plain in message.get(Plain)).strip().replace(" ", "，")
-            return await ChatReply.get_reply(group.id, content)
-        else:
-            return None
+        await update_user_call_count_plus(group, member, UserCalledCount.at, "at")
+        content = "".join(plain.text for plain in message.get(Plain)).strip().replace(" ", "，")
+        return await ChatReply.get_reply(group.id, content)
 
     @staticmethod
     async def get_reply(group_id: int, content: str):

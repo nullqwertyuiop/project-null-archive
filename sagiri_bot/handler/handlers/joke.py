@@ -1,6 +1,7 @@
 import re
 import random
 
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
@@ -29,14 +30,30 @@ joke_non_replace = {
     "苏联": soviet_jokes
 }
 
+twilight = Twilight(
+    [
+        RegexMatch(r"来点.+笑话")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def joke(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await Joke.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def joke(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await Joke.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

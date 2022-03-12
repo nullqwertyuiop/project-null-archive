@@ -1,11 +1,12 @@
-import time
 import asyncio
-import numpy as np
+import time
 from io import BytesIO
 from pathlib import Path
-from typing import Optional
-from PIL import Image as IMG
 from threading import Semaphore
+from typing import Optional
+
+import numpy as np
+from PIL import Image as IMG
 
 try:
     from realesrgan import RealESRGANer
@@ -22,7 +23,7 @@ from graia.broadcast.interrupt import InterruptControl
 from graia.ariadne.message.element import Plain, Image, Source
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
-from graia.ariadne.message.parser.twilight import Twilight, Sparkle
+from graia.ariadne.message.parser.twilight import Twilight, MatchResult
 from graia.ariadne.message.parser.twilight import FullMatch, ElementMatch
 
 from sagiri_bot.decorators import switch, blacklist
@@ -69,16 +70,12 @@ mutex = Semaphore(1)
         listening_events=[GroupMessage],
         inline_dispatchers=[
             Twilight(
-                Sparkle(
-                    [
-                        FullMatch("/超分")
-                    ],
-                    {
-                        "resize": FullMatch("-resize", optional=True),
-                        "enter": FullMatch("\n", optional=True),
-                        "image": ElementMatch(Image, optional=True)
-                    }
-                )
+                [
+                    FullMatch("/超分"),
+                    "resize" @ FullMatch("-resize", optional=True),
+                    "enter" @ FullMatch("\n", optional=True),
+                    "image" @ ElementMatch(Image, optional=True)
+                ],
             )
         ]
     )
@@ -88,8 +85,8 @@ async def super_resolution(
     message: MessageChain,
     group: Group,
     member: Member,
-    image: ElementMatch,
-    resize: FullMatch
+    image: MatchResult,
+    resize: MatchResult
 ):
     if result := await SuperResolution.handle(app, message, group, member, image, resize):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -111,8 +108,8 @@ class SuperResolution(AbstractHandler):
         message: MessageChain,
         group: Group,
         member: Member,
-        image: ElementMatch,
-        resize: FullMatch
+        image: MatchResult,
+        resize: MatchResult
     ) -> Optional[MessageItem]:
 
         @Waiter.create_using_function(listening_events=[GroupMessage])

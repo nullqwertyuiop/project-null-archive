@@ -6,6 +6,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import MemberPerm, Friend
 from graia.broadcast.interrupt import Waiter, InterruptControl
 from graia.saya import Saya, Channel
@@ -28,8 +29,20 @@ channel.name("Utilities")
 channel.author("nullqwertyuiop")
 channel.description("实用工具")
 
+twilight = Twilight(
+    [
+        RegexMatch(r"(工具#权限)|(base64#(编码|解码|encode|decode)#.+)|"
+                   r"((不许|不?可以)帮忙百度)|(更改.+#(.+))|((关闭|打开)(.*)开关)|(\/quit)|(不?信任本群)")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def utilities_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await UtilitiesHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -293,8 +306,8 @@ class UtilitiesHandler(AbstractHandler):
                 return MessageItem(MessageChain.create([
                     Plain(text="权限不足。")
                 ]), QuoteSource())
-        elif re.match("更改嗓音#(.*)", message.asDisplay()):
-            reg = re.compile("更改嗓音#(.*)")
+        elif re.match("更改嗓音#(.+)", message.asDisplay()):
+            reg = re.compile("更改嗓音#(.+)")
             voice = reg.search(message.asDisplay()).group(1)
             if await UtilitiesHandler.permission_check(member) or await user_permission_require(group, member, 2):
                 return MessageItem(MessageChain.create([

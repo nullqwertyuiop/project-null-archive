@@ -2,6 +2,7 @@ import re
 
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import MemberPerm, Friend
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
@@ -25,14 +26,30 @@ channel.name("Notice")
 channel.author("nullqwertyuiop")
 channel.description("公告")
 
+twilight = Twilight(
+    [
+        RegexMatch(r"(发送公告#(.+))|(#(关闭|开启)公告)")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def notice_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await Notice.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def notice_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await Notice.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -47,7 +64,7 @@ class Notice(AbstractHandler):
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
         if message.asDisplay().startswith("发送公告#"):
-            if re.match("发送公告#(.*)", message.asDisplay()):
+            if re.match("发送公告#(.+)", message.asDisplay()):
                 if member and group:
                     if await user_permission_require(group, member, 4):
                         return await Notice.notice(app, message)

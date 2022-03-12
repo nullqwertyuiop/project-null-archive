@@ -5,6 +5,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -23,8 +24,19 @@ channel.name("DragonImageSender")
 channel.author("nullqwertyuiop")
 channel.description("随机龙图")
 
+twilight = Twilight(
+    [
+        UnionMatch("随机龙图", "来张龙图")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def dragon_image_sender_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await DragonImageSender.handle(app, message, group, member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

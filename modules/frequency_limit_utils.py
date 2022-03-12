@@ -6,6 +6,7 @@ from graia.ariadne.app import Ariadne, Friend
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, SpacePolicy, UnionMatch, WildcardMatch
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
@@ -25,13 +26,26 @@ config = core.get_config()
 channel.name("FrequencyLimitUtils")
 channel.author("nullqwertyuiop")
 channel.description("频率限制实用工具 [4 级权限]\n"
-                    "/frequency check [--all]"
-                    "/frequency add [ID/@目标]+"
-                    "/frequency remove -g=[*/ID/(ID,)+] -m=[*/ID/(ID,)+"
+                    "/frequency check [--all]\n"
+                    "/frequency add [ID/@目标]+\n"
+                    "/frequency remove -g=[*/ID/(ID,)+] -m=[*/ID/(ID,)+\n"
                     "/frequency purge")
 
+twilight = Twilight(
+    [
+        FullMatch("/frequency").space(SpacePolicy.FORCE),
+        UnionMatch("check", "add", "remove", "purge"),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def image_to_url_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await FrequencyLimitUtils.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -177,6 +191,5 @@ class FrequencyLimitUtils(AbstractHandler):
 
     @staticmethod
     def purge():
-        for group in FrequencyLimitUtils.__temp_blacklist.keys():
-            FrequencyLimitUtils.__temp_blacklist.pop(group, False)
+        FrequencyLimitUtils.__temp_blacklist = {}
         return [Plain(text="清空临时黑名单成功")]

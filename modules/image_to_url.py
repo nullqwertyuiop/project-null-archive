@@ -1,14 +1,15 @@
 import os
-import re
+# import re
 from io import BytesIO
 from typing import Union
 
-import aiohttp
+# import aiohttp
 from PIL import Image as IMG
 from graia.ariadne.app import Ariadne, Friend
 from graia.ariadne.event.message import Group, Member, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, ElementMatch
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
@@ -26,6 +27,12 @@ channel.name("ImageToURL")
 channel.author("nullqwertyuiop")
 channel.description("图床")
 
+# twilight = Twilight(
+#     [
+#         UnionMatch("开启图片转链接", "开启图床", "关闭图片转链接", "关闭图床"),
+#         ElementMatch(Image)
+#     ]
+# )
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))
 async def image_to_url_handler(app: Ariadne, message: MessageChain, friend: Friend):

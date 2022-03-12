@@ -1,4 +1,5 @@
 import aiohttp
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
@@ -24,8 +25,19 @@ channel.description("一个接入WolframAlpha的插件，在群中发送 `/solve
 
 api_key = AppCore.get_core_instance().get_config().functions.get("wolfram_alpha_key", None)
 
+twilight = Twilight(
+    [
+        RegexMatch(r"/solve .+")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def wolfram_alpha(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await WolframAlpha.handle(app, message, group, member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

@@ -35,10 +35,10 @@ channel.description("一个普通话转抽象话的插件，在群中发送 `/�
         listening_events=[GroupMessage],
         inline_dispatchers=[
             Twilight(
-                Sparkle(
-                    [FullMatch("/抽象 ")],
-                    {"content": RegexMatch(r".*")}
-                )
+                [
+                    FullMatch("/抽象 "),
+                    "content" @ RegexMatch(r".*")
+                ],
             )
         ]
     )

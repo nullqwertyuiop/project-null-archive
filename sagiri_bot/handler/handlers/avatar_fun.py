@@ -1,31 +1,31 @@
-import os
-import re
-import numpy
-import random
-import aiohttp
-import imageio
 import hashlib
+import os
+import random
+import re
 from io import BytesIO
 from typing import Union
-from PIL import Image as IMG
-from graia.ariadne.model import Friend
-from moviepy.editor import ImageSequenceClip
-from PIL import ImageDraw, ImageFilter, ImageOps
 
-from graia.saya import Saya, Channel
+import aiohttp
+import imageio
+import numpy
+from PIL import Image as IMG
+from PIL import ImageDraw, ImageFilter, ImageOps
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.element import At, Image
-from graia.ariadne.message.chain import MessageChain
-from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import At, Image
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, ParamMatch
+from graia.ariadne.model import Friend
+from graia.saya import Saya, Channel
+from graia.saya.builtins.broadcast.schema import ListenerSchema
+from moviepy.editor import ImageSequenceClip
 
 from sagiri_bot.decorators import switch, blacklist
-from sagiri_bot.message_sender.strategy import Normal
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import Normal
 from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
-
 
 frame_spec = [
     (27, 31, 86, 90),
@@ -56,13 +56,37 @@ channel.author("SAGIRI-kawaii")
 channel.description("一个可以生成头像相关趣味图的插件，在群中发送 `[摸|亲|贴|撕|丢|爬|精神支柱|吞] [@目标|目标qq|目标图片]` 即可")
 
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[
+            Twilight(
+                [
+                    UnionMatch("摸", "亲", "贴", "撕", "丢", "爬", "精神支柱", "吞"),
+                    ParamMatch()
+                ]
+            )
+        ]
+    )
+)
 async def avatar_fun_pic_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await AvatarFunPic.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[
+            Twilight(
+                [
+                    UnionMatch("摸", "亲", "贴", "撕", "丢", "爬", "精神支柱", "吞"),
+                    ParamMatch()
+                ]
+            )
+        ]
+    )
+)
 async def avatar_fun_pic_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await AvatarFunPic.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

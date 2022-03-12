@@ -44,7 +44,13 @@ proxy = config.proxy if config.proxy != "proxy" else ''
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
-        inline_dispatchers=[Twilight(Sparkle([FullMatch("搜图")]))]
+        inline_dispatchers=[
+            Twilight(
+                [
+                    FullMatch("搜图")
+                ]
+            )
+        ]
     )
 )
 async def image_searcher(app: Ariadne, message: MessageChain, group: Group, member: Member):

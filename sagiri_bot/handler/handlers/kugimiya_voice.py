@@ -27,7 +27,13 @@ channel.description("一个钉宫语音包插件，发送 `来点钉宫` 即可"
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
-        inline_dispatchers=[Twilight(Sparkle([FullMatch("来点钉宫")]))]
+        inline_dispatchers=[
+            Twilight(
+                [
+                    FullMatch("来点钉宫")
+                ]
+            )
+        ]
     )
 )
 async def kugimiya_voice(app: Ariadne, message: MessageChain, group: Group, member: Member):

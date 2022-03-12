@@ -1,23 +1,23 @@
-import aiohttp
 import urllib.parse as parse
 
-from graia.ariadne.model import Friend
-from graia.saya import Saya, Channel
+import aiohttp
 from graia.ariadne.app import Ariadne
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, MatchResult, SpacePolicy
+from graia.ariadne.model import Friend
+from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
 from sagiri_bot.core.app_core import AppCore
-from sagiri_bot.utils import MessageChainUtils
+from sagiri_bot.decorators import frequency_limit_require_weight_free, switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
-from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.utils import MessageChainUtils
 from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
-from sagiri_bot.decorators import frequency_limit_require_weight_free, switch, blacklist
-
 
 saya = Saya.current()
 channel = Channel.current()
@@ -29,15 +29,45 @@ channel.description("一个可以搜索番剧信息的插件，在群中发送 `
 proxy = AppCore.get_core_instance().get_config().proxy
 
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[
+            Twilight(
+                [
+                    FullMatch("番剧").space(SpacePolicy.FORCE),
+                    "name" @ ParamMatch()
+                ]
+            )
+        ]
+    )
+)
 async def bangumi_info_search_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await BangumiInfoSearcher.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def bangumi_info_search_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await BangumiInfoSearcher.handle(app, message, group=group, member=member):
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[
+            Twilight(
+                [
+                    FullMatch("番剧").space(SpacePolicy.FORCE),
+                    "name" @ ParamMatch()
+                ]
+            )
+        ]
+    )
+)
+async def bangumi_info_search_handler(
+        app: Ariadne,
+        message: MessageChain,
+        group: Group,
+        member: Member,
+        name: MatchResult
+):
+    if result := await BangumiInfoSearcher.handle(app, message, name, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -49,14 +79,17 @@ class BangumiInfoSearcher(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
-                     member: Member = None, friend: Friend = None):
-        if message.asDisplay().startswith("番剧 "):
-            if member and group:
-                await update_user_call_count_plus(group, member, UserCalledCount.search, "search")
-            return await BangumiInfoSearcher.get_bangumi_info(group, member, message.asDisplay()[3:])
-        else:
-            return None
+    async def handle(
+            app: Ariadne,
+            message: MessageChain,
+            name: MatchResult,
+            group: Group = None,
+            member: Member = None,
+            friend: Friend = None
+    ):
+        if member and group:
+            await update_user_call_count_plus(group, member, UserCalledCount.search, "search")
+        return await BangumiInfoSearcher.get_bangumi_info(group, member, name.result)
 
     @staticmethod
     @frequency_limit_require_weight_free(3)

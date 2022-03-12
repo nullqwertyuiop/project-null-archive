@@ -3,6 +3,7 @@ import numpy as np
 from io import BytesIO
 from PIL import Image as IMG
 from PIL import ImageEnhance
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, WildcardMatch
 from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
@@ -28,14 +29,31 @@ channel.name("PhantomTank")
 channel.author("SAGIRI-kawaii")
 channel.description("一个幻影坦克生成器，在群中发送 `幻影 [显示图] [隐藏图]` 即可")
 
+twilight = Twilight(
+    [
+        UnionMatch("幻影", "彩色幻影"),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def phantom_tank(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await PhantomTank.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def phantom_tank(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await PhantomTank.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

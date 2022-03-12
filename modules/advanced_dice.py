@@ -1,22 +1,21 @@
-import asyncio
-import re
 import random
 
-from graia.ariadne.model import Friend
-from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
+from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, RegexMatch, MatchResult
+from graia.ariadne.model import Friend
+from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 
-from sagiri_bot.utils import group_setting, HelpPage, HelpPageElement
-from sagiri_bot.orm.async_orm import Setting
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.orm.async_orm import Setting
+from sagiri_bot.utils import group_setting, HelpPage, HelpPageElement
 
 saya = Saya.current()
 channel = Channel.current()
@@ -25,16 +24,46 @@ channel.name("AdvancedDice")
 channel.author("nullqwertyuiop")
 channel.description("高级(不)的骰子")
 
+twilight = Twilight(
+    [
+        FullMatch(".ra"),
+        FullMatch(" ", optional=True),
+        "content" @ RegexMatch(r"\D+"),
+        "num" @ RegexMatch(r"\d+")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
-async def advanced_dice_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if result := await AdvancedDice.handle(app, message, friend=friend):
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
+async def advanced_dice_handler(
+        app: Ariadne,
+        message: MessageChain,
+        content: MatchResult,
+        num: MatchResult,
+        friend: Friend):
+    if result := await AdvancedDice.handle(app, content, num, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
-async def advanced_dice_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    if result := await AdvancedDice.handle(app, message, group=group, member=member):
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
+async def advanced_dice_handler(
+        app: Ariadne,
+        message: MessageChain,
+        content: MatchResult,
+        num: MatchResult,
+        group: Group,
+        member: Member):
+    if result := await AdvancedDice.handle(app, content, num, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
 
@@ -46,29 +75,31 @@ class AdvancedDice(AbstractHandler):
     @staticmethod
     @switch()
     @blacklist()
-    async def handle(app: Ariadne, message: MessageChain, group: Group = None,
-                     member: Member = None, friend: Friend = None):
-        if re.match(r"(\.|。)ra(\D+)(\d+)", message.asDisplay()):
-            print(message.asDisplay())
-            if member and group:
-                if not await group_setting.get_setting(group.id, Setting.dice):
-                    return MessageItem(MessageChain.create([Plain(text="骰子功能尚未开启。")]), QuoteSource())
-                else:
-                    return MessageItem(MessageChain.create([
-                        Plain(text=f"[{member.name}]进行的 "),
-                        Plain(text=await AdvancedDice.ra(group, message.asDisplay()))
-                    ]), QuoteSource())
-            else:
-                return MessageItem(MessageChain.create([
-                    Plain(text=f"[{friend.nickname}]进行的 "),
-                    Plain(text=await AdvancedDice.ra(group, message.asDisplay()))
-                ]), QuoteSource())
+    async def handle(
+            app: Ariadne,
+            content: MatchResult,
+            num: MatchResult,
+            group: Group = None,
+            member: Member = None,
+            friend: Friend = None
+    ):
+        if member and group:
+            if not await group_setting.get_setting(group.id, Setting.dice):
+                return MessageItem(MessageChain.create([Plain(text="骰子功能尚未开启。")]), QuoteSource())
+        else:
+            return MessageItem(
+                MessageChain.create(
+                    [
+                        Plain(text=f"[]进行的 "),
+                        Plain(text=AdvancedDice.ra(
+                            content.result.asDisplay(),
+                            int(num.result.asDisplay())
+                        ))
+                    ]
+                ), QuoteSource())
 
     @staticmethod
-    async def ra(group: Group, message: str):
-        reg = re.compile("(\.|。)ra(\D+)(\d+)")
-        text = reg.search(message).group(2)
-        dice = int(reg.search(message).group(3))
+    def ra(text: str, dice: int):
         max_point = 100
         # max = await orm.fetchall()
         if dice > max_point:

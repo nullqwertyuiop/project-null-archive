@@ -5,6 +5,7 @@ from io import BytesIO
 from math import radians, tan
 from decimal import Decimal, ROUND_HALF_UP
 from PIL import Image as IMG, ImageDraw, ImageFont
+from graia.ariadne.message.parser.twilight import RegexMatch, Twilight
 from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
@@ -43,14 +44,30 @@ channel.name("StylePictureGenerator")
 channel.author("SAGIRI-kawaii")
 channel.description("一个可以生成不同风格图片的插件，在群中发送 `[5000兆|ph|yt] 文字1 文字2` 即可")
 
+twilight = Twilight(
+    [
+        RegexMatch(r"(5000兆|ph|yt) .* .*")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def style_picture_generator(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await StylePictureGenerator.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def style_picture_generator(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await StylePictureGenerator.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

@@ -1,4 +1,5 @@
 import aiohttp
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, WildcardMatch
 from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
@@ -23,14 +24,31 @@ channel.name("GithubInfo")
 channel.author("SAGIRI-kawaii")
 channel.description("可以搜索Github项目信息的插件，在群中发送 `github [-i] {项目名}`")
 
+twilight = Twilight(
+    [
+        FullMatch("github"),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def github_info(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await GithubInfo.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def github_info(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await GithubInfo.handle(app, message, group, member):
         try:

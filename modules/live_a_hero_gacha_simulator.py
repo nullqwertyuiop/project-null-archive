@@ -11,6 +11,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import MemberPerm, Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -50,6 +51,11 @@ sk_four_stars_location = [(236, 453), (86, 585), (236, 585), (381, 585), (86, 71
                           (86, 849), (236, 849)]
 sk_three_stars_location = [(242, 453), (95, 585), (242, 585), (390, 585), (95, 717), (242, 717), (390, 717),
                            (95, 849), (242, 849)]
+folders = ["3", "4", "5", "3_sk", "4_sk", "3_sk_limited", "4_sk_limited",
+           "3_limited", "4_limited", "5_limited", "4_up", "4_sk_up", "5_up"]
+for folder in folders:
+    if not os.path.isdir(f"{os.getcwd()}/statics/lah/{folder}/"):
+        os.mkdir(f"{os.getcwd()}/statics/lah/{folder}/")
 three_stars = os.listdir(f"{os.getcwd()}/statics/lah/3/")
 for i in range(len(three_stars)):
     three_stars[i] = "/3/" + three_stars[i]
@@ -92,14 +98,30 @@ for i in range(len(five_stars_up)):
 with open(f"{os.getcwd()}/statics/lah/hero.json", "r", encoding="utf-8") as r:
     hero_data = json.loads(r.read())
 
+twilight = Twilight(
+    [
+        RegexMatch(r"((L|l)(A|a)(H|h) ?((模(拟|擬)(限定| ?(U|u)(P|p) ?)?抽卡)|(抽卡(总|總)(结|結))))|(吃桃模式#\d+)")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def live_a_hero_gacha_simulator_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await LiveAHeroGachaSimulator.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def live_a_hero_gacha_simulator_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await LiveAHeroGachaSimulator.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

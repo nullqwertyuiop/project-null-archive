@@ -6,6 +6,7 @@ import asyncio
 import traceback
 from typing import Union
 
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from loguru import logger
 from sqlalchemy import select
@@ -45,8 +46,19 @@ channel.description("语音合成插件，在群中发送 `说 {content}` 即可
 core = AppCore.get_core_instance()
 config = core.get_config()
 
+twilight = Twilight(
+    [
+        RegexMatch(r"说 .+")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def speak_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await Speak.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

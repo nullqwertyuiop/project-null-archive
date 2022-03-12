@@ -7,6 +7,7 @@ from graia.ariadne.app import Ariadne, Friend
 from graia.ariadne.event.message import Group, Member, FriendMessage, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, UnionMatch, WildcardMatch
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
@@ -26,14 +27,33 @@ channel.name("Command")
 channel.author("nullqwertyuiop")
 channel.description("瞎**乱写的指令功能")
 
+twilight = Twilight(
+    [
+        FullMatch("/"),
+        UnionMatch("contact", "feedback", "help"),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
+
 async def command_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await Command.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def command_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await Command.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -50,22 +70,21 @@ class Command(AbstractHandler):
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
-        if message.asDisplay().startswith("/"):
-            cord = {
-                "/contact": Command.contact,
-                "/feedback": Command.contact,
-                "/help": Command.help
-            }
-            try:
-                command, content = message.asDisplay().split(" ", maxsplit=1)
-            except ValueError:
-                command = message.asDisplay()
-                content = None
-            if command not in Command.command_list:
-                return None
-            return MessageItem(MessageChain.create(
-                await cord[command](app, message, group=group, member=member, friend=friend, content=content)
-            ), QuoteSource())
+        cord = {
+            "/contact": Command.contact,
+            "/feedback": Command.contact,
+            "/help": Command.help
+        }
+        try:
+            command, content = message.asDisplay().split(" ", maxsplit=1)
+        except ValueError:
+            command = message.asDisplay()
+            content = None
+        if command not in Command.command_list:
+            return None
+        return MessageItem(MessageChain.create(
+            await cord[command](app, message, group=group, member=member, friend=friend, content=content)
+        ), QuoteSource())
 
     @staticmethod
     async def contact(app: Ariadne, message: MessageChain, group: Union[Group, int] = None,

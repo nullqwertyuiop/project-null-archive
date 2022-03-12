@@ -1,23 +1,22 @@
-import aiohttp
 from io import BytesIO
 
-from graia.saya import Saya, Channel
+import aiohttp
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Plain, Image
-from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
-from graia.ariadne.message.parser.twilight import Twilight, Sparkle
-from graia.ariadne.message.parser.twilight import RegexMatch, FullMatch, ElementMatch
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image
+from graia.ariadne.message.parser.twilight import FullMatch, ElementMatch, ParamMatch
+from graia.ariadne.message.parser.twilight import Twilight, MatchResult
+from graia.saya import Saya, Channel
+from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from sagiri_bot.utils import BuildImage
 from sagiri_bot.core.app_core import AppCore
 from sagiri_bot.decorators import switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
-from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
-
+from sagiri_bot.message_sender.strategy import QuoteSource
+from sagiri_bot.utils import BuildImage
 
 saya = Saya.current()
 channel = Channel.current()
@@ -35,10 +34,13 @@ config = core.get_config()
         listening_events=[GroupMessage],
         inline_dispatchers=[
             Twilight(
-                Sparkle(
-                    [FullMatch("黑白"), FullMatch("草", optional=True), FullMatch("图")],
-                    {"content": RegexMatch(r".+"), "image": ElementMatch(Image)}
-                )
+                [
+                    FullMatch("黑白"),
+                    FullMatch("草", optional=True),
+                    FullMatch("图"),
+                    "content" @ ParamMatch(),
+                    "image" @ ElementMatch(Image)
+                ],
             )
         ]
     )
@@ -48,8 +50,8 @@ async def black_white_grass(
         message: MessageChain,
         group: Group,
         member: Member,
-        content: RegexMatch,
-        image: ElementMatch
+        content: MatchResult,
+        image: MatchResult
 ):
     if result := await BWGrass.handle(app, message, group, member, content, image):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -69,8 +71,8 @@ class BWGrass(AbstractHandler):
             message: MessageChain,
             group: Group,
             member: Member,
-            content: RegexMatch,
-            image: ElementMatch
+            content: MatchResult,
+            image: MatchResult
     ):
         msg = content.result.asDisplay()
         img = await image.result.get_bytes()

@@ -7,6 +7,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -30,8 +31,19 @@ channel.description("随机餐点")
 with open(f"{os.getcwd()}/statics/food.json", "r", encoding="utf-8") as r:
     food = json.loads(r.read())
 
+twilight = Twilight(
+    [
+        RegexMatch(r"(随|隨)(机|機)((早|午|晚)餐)|((奶|果)茶)")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def random_food_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await RandomFood.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

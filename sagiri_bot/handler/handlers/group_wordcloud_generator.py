@@ -7,6 +7,7 @@ from io import BytesIO
 from PIL import Image as IMG
 from datetime import datetime
 import matplotlib.pyplot as plt
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from sqlalchemy import select, func
 from dateutil.relativedelta import relativedelta
@@ -39,8 +40,19 @@ channel.description(
     "在群中发送 `[我的|本群][月|年]内总结` 即可查看个人/群 月/年词云（群词云需要权限等级2）"
 )
 
+twilight = Twilight(
+    [
+        RegexMatch(r"(我的|本群)(月|年)内总结")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def group_wordcloud_generator(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await GroupWordCloudGenerator.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

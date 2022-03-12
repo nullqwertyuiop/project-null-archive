@@ -1,4 +1,4 @@
-import re
+# import re
 import time
 from datetime import datetime
 from io import BytesIO
@@ -10,6 +10,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -32,8 +33,18 @@ channel.name("Prostitute")
 channel.author("nullqwertyuiop")
 channel.description("某口口相传功能")
 
+twilight = Twilight(
+    [
+        UnionMatch("我的β", "我的贝塔")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def prostitute_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await ProstituteHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -67,10 +78,10 @@ class ProstituteHandler(AbstractHandler):
             return MessageItem(MessageChain.create([
                 # Image(data_bytes=await ProstituteHandler.get_avatar(member.id)),
                 Plain(text=result)]), QuoteSource())
-        elif re.match("转硬币#.*", message.asDisplay()):
-            if not await group_setting.get_setting(group.id, Setting.prostitute):
-                return None
-            return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource())
+        # elif re.match("转硬币#.*", message.asDisplay()):
+        #     if not await group_setting.get_setting(group.id, Setting.prostitute):
+        #         return None
+        #     return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource())
             # try:
             #     _, amount = message.asDisplay().split("#")
             #     member_id = member.id
@@ -85,10 +96,10 @@ class ProstituteHandler(AbstractHandler):
             # except AccountMuted:
             #     logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
             #     return None
-        elif re.match("转β币#.*", message.asDisplay()):
-            if not await group_setting.get_setting(group.id, Setting.prostitute):
-                return None
-            return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource())
+        # elif re.match("转β币#.*", message.asDisplay()):
+        #     if not await group_setting.get_setting(group.id, Setting.prostitute):
+        #         return None
+        #     return MessageItem(MessageChain.create([Plain(text="该功能已移除。")]), QuoteSource())
             # try:
             #     _, amount = message.asDisplay().split("#")
             #     member_id = member.id
@@ -363,4 +374,3 @@ class ProstituteHandler(AbstractHandler):
     #     else:
     #         text = "更变种族出错，请联系机器人管理员。"
     #         return text
-    #

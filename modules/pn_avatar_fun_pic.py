@@ -4,11 +4,12 @@ from io import BytesIO
 from typing import Union
 
 import aiohttp
-from PIL import Image as IMG, ImageDraw, ImageFilter
+from PIL import Image as IMG
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Image
+from graia.ariadne.message.parser.twilight import Twilight, WildcardMatch, UnionMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -18,7 +19,7 @@ from sagiri_bot.handler.handler import AbstractHandler
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
 from sagiri_bot.message_sender.strategy import Normal
-from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount, HelpPage, HelpPageElement
+from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount, HelpPage, HelpPageElement, BuildImage
 
 saya = Saya.current()
 channel = Channel.current()
@@ -27,14 +28,31 @@ channel.name("PNAvatarFunPic")
 channel.author("nullqwertyuiop")
 channel.description("头像处理")
 
+twilight = Twilight(
+    [
+        UnionMatch("完美", "3p", "刀"),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def pn_avatar_fun_pic_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await PNAvatarFunPicHandler.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def pn_avatar_fun_pic_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await PNAvatarFunPicHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -77,24 +95,26 @@ class PNAvatarFunPicHandler(AbstractHandler):
                     await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
                 element1 = match_elements[0]
                 element2 = match_elements[1]
-                return MessageItem(MessageChain.create([await PNAvatarFunPicHandler.three_p([
-                    element1.target if isinstance(element1, At) else element1.url,
-                    member.id if member else friend.id,
-                    element2.target if isinstance(element2, At) else element2.url
-                ])]
-                                                       ), Normal())
+                return MessageItem(MessageChain.create([
+                    await PNAvatarFunPicHandler.three_p([
+                        element1.target if isinstance(element1, At) else element1.url,
+                        member.id if member else friend.id,
+                        element2.target if isinstance(element2, At) else element2.url
+                    ])]
+                ), Normal())
             elif len(match_elements) > 2:
                 if member and group:
                     await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
                 element1 = match_elements[0]
                 element2 = match_elements[1]
                 element3 = match_elements[2]
-                return MessageItem(MessageChain.create([await PNAvatarFunPicHandler.three_p([
-                    element1.target if isinstance(element1, At) else element1.url,
-                    element2.target if isinstance(element2, At) else element2.url,
-                    element3.target if isinstance(element3, At) else element3.url
-                ])]
-                                                       ), Normal())
+                return MessageItem(MessageChain.create([
+                    await PNAvatarFunPicHandler.three_p([
+                        element1.target if isinstance(element1, At) else element1.url,
+                        element2.target if isinstance(element2, At) else element2.url,
+                        element3.target if isinstance(element3, At) else element3.url
+                    ])]
+                ), Normal())
             elif re.match(r"3p \d+ \d+(?: \d+)?", message_text):
                 if member and group:
                     await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
@@ -112,12 +132,48 @@ class PNAvatarFunPicHandler(AbstractHandler):
                 return MessageItem(MessageChain.create([
                     await PNAvatarFunPicHandler.three_p([int(left), int(middle), int(right)])]
                 ), Normal())
+        elif message_text.startswith("刀"):
+            match_elements = PNAvatarFunPicHandler.get_match_element(message)
+            if len(match_elements) == 1:
+                if member and group:
+                    await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+                element1 = match_elements[0]
+                return MessageItem(MessageChain.create([
+                    await PNAvatarFunPicHandler.knife([
+                        element1.target if isinstance(element1, At) else element1.url,
+                        member.id if member else friend.id
+                    ])]
+                ), Normal())
+            elif len(match_elements) == 2:
+                if member and group:
+                    await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+                element1 = match_elements[0]
+                element2 = match_elements[1]
+                return MessageItem(MessageChain.create([
+                    await PNAvatarFunPicHandler.knife([
+                        element1.target if isinstance(element1, At) else element1.url,
+                        element2.target if isinstance(element2, At) else element2.url
+                    ])]
+                ), Normal())
+            elif re.match(r"刀 \d+(?: \d+)?", message_text):
+                if member and group:
+                    await update_user_call_count_plus(group, member, UserCalledCount.functions, "functions")
+                split = message_text[2:].split(" ")
+                if len(split) == 1:
+                    uid_list = [split[0], member.id if member else friend.id]
+                elif len(split) == 2:
+                    uid_list = [split[0], split[1]]
+                else:
+                    return None
+                return MessageItem(MessageChain.create([
+                    await PNAvatarFunPicHandler.knife(uid_list)]
+                ), Normal())
         else:
             return None
 
     @staticmethod
     async def get_pil_avatar(image: Union[int, str]):
-        if isinstance(image, int):
+        if isinstance(image, int) or image.isdigit():
             url = f'http://q1.qlogo.cn/g?b=qq&nk={str(image)}&s=640'
         else:
             url = image
@@ -127,14 +183,14 @@ class PNAvatarFunPicHandler(AbstractHandler):
         return IMG.open(BytesIO(img_content)).convert("RGBA")
 
     @staticmethod
-    async def get_circle_avatar(image: Union[int, str]):
-        avatar = await PNAvatarFunPicHandler.get_pil_avatar(image)
-        mask = IMG.new('L', avatar.size, 0)
-        draw = ImageDraw.Draw(mask)
-        draw.ellipse((0, 0, avatar.size), fill=255)
-        mask = mask.filter(ImageFilter.GaussianBlur(0))
-        avatar.putalpha(mask)
-        return avatar
+    async def get_circle_avatar(image: Union[int, str], w: int = 0, h: int = 0, rotate: int = None):
+        bytes_io = BytesIO()
+        (await PNAvatarFunPicHandler.get_pil_avatar(image)).save(bytes_io, format="png")
+        avatar = BuildImage(w=w, h=h, background=bytes_io)
+        avatar.circle()
+        if rotate:
+            avatar.rotate(rotate)
+        return avatar.markImg
 
     @staticmethod
     async def perfect(image: Union[int, str]) -> Image:
@@ -166,6 +222,20 @@ class PNAvatarFunPicHandler(AbstractHandler):
         back = IMG.open(f'{os.getcwd()}/statics/bear.jpg')
         back.paste(avatar.resize((175, 175)), (285, 210), mask=avatar.resize((175, 175)))
         output = BytesIO()
+        back.save(output, format='jpeg')
+        return Image(data_bytes=output.getvalue())
+
+    @staticmethod
+    async def knife(image: list) -> Image:
+        back = IMG.open(f'{os.getcwd()}/statics/knife_back.png').convert("RGBA")
+        mask = IMG.open(f'{os.getcwd()}/statics/knife_mask.png').convert("RGBA")
+        a = await PNAvatarFunPicHandler.get_circle_avatar(image[0], 175, 175, 45)
+        b = await PNAvatarFunPicHandler.get_circle_avatar(image[1], 275, 275)
+        back.paste(a, (1, 346), mask=a)
+        back.paste(b, (107, 70), mask=b)
+        back.paste(mask, (0, 0), mask=mask)
+        output = BytesIO()
+        back = back.convert("RGB")
         back.save(output, format='jpeg')
         return Image(data_bytes=output.getvalue())
 

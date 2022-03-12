@@ -5,6 +5,7 @@ import traceback
 from io import BytesIO
 from typing import List
 
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch, ElementMatch
 from graia.ariadne.model import Friend
 from loguru import logger
 from PIL import Image as IMG
@@ -36,8 +37,20 @@ image_paths = core.get_config().image_path
 legal_type = image_paths.keys()
 pattern = r"添加(" + '|'.join([key for key in legal_type]) + r")图片.*(\[图片])+"
 
+twilight = Twilight(
+    [
+        RegexMatch(r"添加(" + '|'.join([key for key in legal_type]) + r")图片"),
+        ElementMatch(Image)
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def image_adder(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await ImageAdder.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

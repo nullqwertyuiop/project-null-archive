@@ -5,6 +5,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, ForwardNode, Forward
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -22,14 +23,30 @@ channel.name("FakeForward")
 channel.author("nullqwertyuiop")
 channel.description("更加高级的伪造功能，不要让我踢你的屁股")
 
+twilight = Twilight(
+    [
+        RegexMatch(r"构造转发(:|：).*")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def fake_forward_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await FakeForward.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
+
 async def fake_forward_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await FakeForward.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -46,13 +63,13 @@ class FakeForward(AbstractHandler):
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
-        if re.match("构造转发(:|：).*", message.asDisplay()):
-            raw_data = re.sub("构造转发(:|：)\n*", "", message.asDisplay(), count=1)
+        if re.match(r"构造转发(:|：).*", message.asDisplay()):
+            raw_data = re.sub(r"构造转发(:|：)\n*", "", message.asDisplay(), count=1)
             fwd_nodelist = []
             while True:
-                if fwd_node := re.compile("节点\{(\d+)#(\d{4}\/\d{1,2}\/\d{1,2} \d{1,2}:\d{2})#(.+)#:#(.+)\}\n*")\
+                if fwd_node := re.compile(r"节点\{(\d+)#(\d{4}\/\d{1,2}\/\d{1,2} \d{1,2}:\d{2})#(.+)#:#(.+)\}\n*")\
                         .search(raw_data):
-                    raw_data = re.sub('节点\{(\d+)#(\d{4}\/\d{1,2}\/\d{1,2} \d{1,2}:\d{2})#(.+)#:#(.+)\}\n*', "",
+                    raw_data = re.sub(r'节点\{(\d+)#(\d{4}\/\d{1,2}\/\d{1,2} \d{1,2}:\d{2})#(.+)#:#(.+)\}\n*', "",
                                       raw_data, count=1)
                     target = int(fwd_node.group(1))
                     time = fwd_node.group(2)

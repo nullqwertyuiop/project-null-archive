@@ -2,6 +2,7 @@ import asyncio
 import re
 from datetime import datetime
 
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, WildcardMatch
 from loguru import logger
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne, Friend
@@ -37,8 +38,20 @@ async def nudged(app: Ariadne, event: NudgeEvent):
         if event.context_type == "group":
             await Nudge.nudged(app, event)
 
+twilight = Twilight(
+    [
+        FullMatch("戳"),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def nudge(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await Nudge.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

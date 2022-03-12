@@ -2,6 +2,7 @@ import re
 import aiohttp
 from bs4 import BeautifulSoup
 from aiohttp import TCPConnector
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
@@ -31,14 +32,30 @@ core = AppCore.get_core_instance()
 config = core.get_config()
 proxy = config.proxy if config.proxy != "proxy" else ''
 
+twilight = Twilight(
+    [
+        RegexMatch(r"pdf .+")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def pdf_searcher(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await PDFSearcher.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def pdf_searcher(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await PDFSearcher.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

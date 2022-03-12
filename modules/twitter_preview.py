@@ -235,7 +235,7 @@ class TwitterPreview(AbstractHandler):
                             try:
                                 _vid_url = resp["data"][0]["entities"]["urls"][_index + offset]["expanded_url"]
                                 if re.match(
-                                        "(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)\/video\/\d+",
+                                        r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)\/video\/\d+",
                                         _vid_url
                                 ):
                                     break
@@ -264,7 +264,7 @@ class TwitterPreview(AbstractHandler):
                             try:
                                 _gif_url = resp["data"][0]["entities"]["urls"][_index + offset]["expanded_url"]
                                 if re.match(
-                                        "(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)\/photo\/\d+",
+                                        r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/(\d+)\/photo\/\d+",
                                         _gif_url
                                 ):
                                     break
@@ -417,16 +417,20 @@ class TwitterPreview(AbstractHandler):
                 for short_link in short_match:
                     if not (short_link.startswith("http://") or short_link.startswith("https://")):
                         short_link = "https://" + short_link
-                    async with aiohttp.ClientSession(headers=None) as session:
-                        async with session.get(short_link, proxy=proxy) as res:
-                            if res.status == 200:
-                                link = str(res.url)
-                                if re.match(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/\d+", link):
-                                    requested_url.append(link)
+                    try:
+                        async with aiohttp.ClientSession(headers=None) as session:
+                            async with session.get(short_link, proxy=proxy) as res:
+                                if res.status == 200:
+                                    link = str(res.url)
+                                    if re.match(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/\d+", link):
+                                        requested_url.append(link)
+                                    else:
+                                        continue
                                 else:
                                     continue
-                            else:
-                                continue
+                    except Exception as e:
+                        logger.error(e)
+                        continue
             if match := re.findall(r"(?:https?:\/\/)?(?:www\.)?twitter\.com\/[\w\d]+\/status\/\d+", message):
                 for link in match:
                     requested_url.append(link)

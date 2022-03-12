@@ -7,6 +7,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image, Xml
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch, WildcardMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -28,14 +29,33 @@ channel.name("BilibiliLinkResolve")
 channel.author("nullqwertyuiop")
 channel.description("B站链接解析")
 
+twilight = Twilight(
+    [
+        WildcardMatch(),
+        RegexMatch(r"(http:|https:\/\/)?([^.]+\.)?(bilibili\.com\/video\/((BV|bv)[\w\d]{10}|((AV|av)([\d]+))))|("
+                   r"b23\.tv\/[\w\d]+)"),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def bilibili_link_resolve_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await BilibiliLinkResolve.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def bilibili_link_resolve_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await BilibiliLinkResolve.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -52,7 +72,7 @@ class BilibiliLinkResolve(AbstractHandler):
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
-        if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
+        if match := re.findall(r"(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
                                message.asDisplay()):
             if member and group:
                 if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
@@ -64,7 +84,7 @@ class BilibiliLinkResolve(AbstractHandler):
                 await BilibiliLinkResolve.generate_messagechain(info, group),
                 QuoteSource()
             )
-        elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
+        elif match := re.findall(r"(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
                                  message.asDisplay()):
             if member and group:
                 if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
@@ -75,7 +95,7 @@ class BilibiliLinkResolve(AbstractHandler):
                 await BilibiliLinkResolve.generate_messagechain(info, group),
                 QuoteSource()
             )
-        elif match := re.findall("((?:http:|https:\/\/)?(?:[^.]+\.)?b23\.tv\/[\w\d]+)", message.asDisplay()):
+        elif match := re.findall(r"((?:http:|https:\/\/)?(?:[^.]+\.)?b23\.tv\/[\w\d]+)", message.asDisplay()):
             if member and group:
                 if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                     return None
@@ -86,7 +106,7 @@ class BilibiliLinkResolve(AbstractHandler):
                 async with session.get(match) as res:
                     if res.status == 200:
                         link = str(res.url)
-            if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
+            if match := re.findall(r"(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
                                    link):
                 bv = "bv" + match[0]
                 av = BilibiliLinkResolve.bv_to_av(bv)
@@ -95,7 +115,7 @@ class BilibiliLinkResolve(AbstractHandler):
                     await BilibiliLinkResolve.generate_messagechain(info, group),
                     QuoteSource()
                 )
-            elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
+            elif match := re.findall(r"(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
                                      link):
                 av = match[0]
                 info = await BilibiliLinkResolve.get_info(av)
@@ -105,7 +125,7 @@ class BilibiliLinkResolve(AbstractHandler):
                 )
         elif xml := message.get(Xml):
             xml = xml[0].xml
-            if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
+            if match := re.findall(r"(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
                                    message.asDisplay()):
                 if member and group:
                     if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
@@ -117,7 +137,7 @@ class BilibiliLinkResolve(AbstractHandler):
                     await BilibiliLinkResolve.generate_messagechain(info, group),
                     QuoteSource()
                 )
-            elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
+            elif match := re.findall(r"(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
                                      message.asDisplay()):
                 if member and group:
                     if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
@@ -128,7 +148,7 @@ class BilibiliLinkResolve(AbstractHandler):
                     await BilibiliLinkResolve.generate_messagechain(info, group),
                     QuoteSource()
                 )
-            elif url := re.compile(".*url=\"((http:|https:\/\/)?[^.]+\.bilibili\.com\/video\/(BV|bv).*)\" .*").search(
+            elif url := re.compile(r".*url=\"((http:|https:\/\/)?[^.]+\.bilibili\.com\/video\/(BV|bv).*)\" .*").search(
                     xml):
                 if member and group:
                     if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
@@ -141,7 +161,7 @@ class BilibiliLinkResolve(AbstractHandler):
                     await BilibiliLinkResolve.generate_messagechain(info, group),
                     QuoteSource()
                 )
-            elif match := re.findall("((?:http:|https:\/\/)?(?:[^.]+\.)?b23\.tv\/[\w\d]+)", message.asDisplay()):
+            elif match := re.findall(r"((?:http:|https:\/\/)?(?:[^.]+\.)?b23\.tv\/[\w\d]+)", message.asDisplay()):
                 if member and group:
                     if not await group_setting.get_setting(group.id, Setting.bilibili_app_parse):
                         return None
@@ -152,7 +172,7 @@ class BilibiliLinkResolve(AbstractHandler):
                     async with session.get(match) as res:
                         if res.status == 200:
                             link = str(res.url)
-                if match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
+                if match := re.findall(r"(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:BV|bv)([\w\d]{10})",
                                        link):
                     bv = "bv" + match[0]
                     av = BilibiliLinkResolve.bv_to_av(bv)
@@ -161,7 +181,7 @@ class BilibiliLinkResolve(AbstractHandler):
                         await BilibiliLinkResolve.generate_messagechain(info, group),
                         QuoteSource()
                     )
-                elif match := re.findall("(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
+                elif match := re.findall(r"(?:http:|https:\/\/)?(?:[^.]+\.)?bilibili\.com\/video\/(?:AV|av)([\d]+)",
                                          link):
                     av = match[0]
                     info = await BilibiliLinkResolve.get_info(av)

@@ -8,6 +8,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -26,18 +27,33 @@ channel.name("JueJueZi")
 channel.author("nullqwertyuiop")
 channel.description("绝绝子")
 
-
 with open(f"{os.getcwd()}/statics/juejuezi.json", "r", encoding="utf-8") as r:
     juejuezi = json.loads(r.read())
 
+twilight = Twilight(
+    [
+        RegexMatch("绝绝子#.*#.*")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def jue_jue_zi_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await JueJueZi.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def jue_jue_zi_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await JueJueZi.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -62,11 +78,13 @@ class JueJueZi(AbstractHandler):
     async def generate(do: str, what: str):
         result = ""
         divider = random.choice(juejuezi["dividers"])
-        part1 = str(random.choice(juejuezi["beginning"])).replace("who", str(random.choice(juejuezi["who"]))).replace("someone", str(random.choice(juejuezi["someone"])))
+        part1 = str(random.choice(juejuezi["beginning"])).replace("who", str(random.choice(juejuezi["who"]))).replace(
+            "someone", str(random.choice(juejuezi["someone"])))
         part2 = str(random.choice(juejuezi["emotions"]["emoji"]))
         part3 = str(random.choice(juejuezi["fashion"]))
         part4 = str(random.choice(juejuezi["todosth"])).replace("dosth", str(do + what))
-        part5 = str(random.choice(juejuezi["attribute"])).replace("dosth", str(do)) + str(random.choice(juejuezi["auxiliaryWords"]))
+        part5 = str(random.choice(juejuezi["attribute"])).replace("dosth", str(do)) + str(
+            random.choice(juejuezi["auxiliaryWords"]))
         part6 = str(random.choice(juejuezi["collections"])) + str(random.choice(juejuezi["fashion"]))
         part7 = str(random.choice(juejuezi["attribute"])).replace("dosth", str(do))
         part8 = str(random.choice(juejuezi["ending"]))

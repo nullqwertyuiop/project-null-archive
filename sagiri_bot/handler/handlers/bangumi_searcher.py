@@ -1,5 +1,6 @@
 import time
 import aiohttp
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, SpacePolicy
 from loguru import logger
 
 from graia.saya import Saya, Channel
@@ -37,13 +38,35 @@ bcc = core.get_bcc()
 proxy = core.get_config().proxy
 
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[
+            Twilight(
+                [
+                    FullMatch("搜图").space(SpacePolicy.NOSPACE)
+                ]
+            )
+        ]
+    )
+)
 async def bangumi_searcher(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await BangumiSearcher.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[
+            Twilight(
+                [
+                    FullMatch("搜图").space(SpacePolicy.NOSPACE)
+                ]
+            )
+        ]
+    )
+)
 async def bangumi_searcher(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await BangumiSearcher.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -59,90 +82,87 @@ class BangumiSearcher(AbstractHandler):
     @blacklist()
     async def handle(app: Ariadne, message: MessageChain, group: Group = None,
                      member: Member = None, friend: Friend = None):
-        if message.asDisplay() == "搜番":
-            if member and group:
-                await update_user_call_count_plus(group, member, UserCalledCount.search, "search")
-                if not await group_setting.get_setting(group.id, Setting.bangumi_search):
-                    return MessageItem(MessageChain.create([Plain(text="该功能已关闭，请阅读文档或联系机器人管理员开启。")]), Normal())
-                try:
-                    await app.sendGroupMessage(group, MessageChain.create([
-                        At(member.id), Plain("请在30秒内发送要搜索的图片。")
-                    ]))
-                except AccountMuted:
-                    logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
-                    return None
-            else:
-                await app.sendMessage(friend, MessageChain.create([
-                        Plain("请在30秒内发送要搜索的图片。")
+        if member and group:
+            await update_user_call_count_plus(group, member, UserCalledCount.search, "search")
+            if not await group_setting.get_setting(group.id, Setting.bangumi_search):
+                return MessageItem(MessageChain.create([Plain(text="该功能已关闭，请阅读文档或联系机器人管理员开启。")]), Normal())
+            try:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    At(member.id), Plain("请在30秒内发送要搜索的图片。")
                 ]))
+            except AccountMuted:
+                logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
+                return None
+        else:
+            await app.sendMessage(friend, MessageChain.create([
+                    Plain("请在30秒内发送要搜索的图片。")
+            ]))
 
-            image_get = None
-            message_received = None
+        image_get = None
+        message_received = None
 
-            if member and group:
-                @Waiter.create_using_function([GroupMessage])
-                def waiter(
-                        event: GroupMessage, waiter_group: Group,
-                        waiter_member: Member, waiter_message: MessageChain
-                ):
-                    nonlocal image_get
-                    nonlocal message_received
-                    if time.time() - start_time < 30:
-                        if all([
-                            waiter_group.id == group.id,
-                            waiter_member.id == member.id,
-                            len(waiter_message[Image]) == len(waiter_message.__root__) - 1
-                        ]):
-                            image_get = True
-                            message_received = waiter_message
-                            return event
-                    else:
-                        logger.warning("等待用户超时！BangumiSearchHandler进程推出！")
+        if member and group:
+            @Waiter.create_using_function([GroupMessage])
+            def waiter(
+                    event: GroupMessage, waiter_group: Group,
+                    waiter_member: Member, waiter_message: MessageChain
+            ):
+                nonlocal image_get
+                nonlocal message_received
+                if time.time() - start_time < 30:
+                    if all([
+                        waiter_group.id == group.id,
+                        waiter_member.id == member.id,
+                        len(waiter_message[Image]) == len(waiter_message.__root__) - 1
+                    ]):
+                        image_get = True
+                        message_received = waiter_message
                         return event
-            else:
-                @Waiter.create_using_function([FriendMessage])
-                def waiter(
-                        event: FriendMessage, waiter_friend: Friend,
-                        waiter_message: MessageChain
-                ):
-                    nonlocal image_get
-                    nonlocal message_received
-                    if time.time() - start_time < 30:
-                        if all([
-                            waiter_friend.id == friend.id,
-                            len(waiter_message[Image]) == len(waiter_message.__root__) - 1
-                        ]):
-                            image_get = True
-                            message_received = waiter_message
-                            return event
-                    else:
-                        logger.warning("等待用户超时！BangumiSearchHandler进程推出！")
-                        return event
-
-            inc = InterruptControl(bcc)
-            start_time = time.time()
-            await inc.wait(waiter)
-            if image_get:
-                logger.success("收到用户图片，启动搜索进程！")
-                if member and group:
-                    try:
-                        await app.sendGroupMessage(
-                            group,
-                            await BangumiSearcher.search_bangumi(message_received[Image][0]),
-                            quote=message_received[Source][0]
-                        )
-                    except AccountMuted:
-                        logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
-                        pass
                 else:
-                    await app.sendMessage(
-                        friend,
+                    logger.warning("等待用户超时！BangumiSearchHandler进程推出！")
+                    return event
+        else:
+            @Waiter.create_using_function([FriendMessage])
+            def waiter(
+                    event: FriendMessage, waiter_friend: Friend,
+                    waiter_message: MessageChain
+            ):
+                nonlocal image_get
+                nonlocal message_received
+                if time.time() - start_time < 30:
+                    if all([
+                        waiter_friend.id == friend.id,
+                        len(waiter_message[Image]) == len(waiter_message.__root__) - 1
+                    ]):
+                        image_get = True
+                        message_received = waiter_message
+                        return event
+                else:
+                    logger.warning("等待用户超时！BangumiSearchHandler进程推出！")
+                    return event
+
+        inc = InterruptControl(bcc)
+        start_time = time.time()
+        await inc.wait(waiter)
+        if image_get:
+            logger.success("收到用户图片，启动搜索进程！")
+            if member and group:
+                try:
+                    await app.sendGroupMessage(
+                        group,
                         await BangumiSearcher.search_bangumi(message_received[Image][0]),
                         quote=message_received[Source][0]
                     )
-            return None
-        else:
-            return None
+                except AccountMuted:
+                    logger.error(f"Bot 在群 <{group.name}> 被禁言，无法发送！")
+                    pass
+            else:
+                await app.sendMessage(
+                    friend,
+                    await BangumiSearcher.search_bangumi(message_received[Image][0]),
+                    quote=message_received[Source][0]
+                )
+        return None
 
     @staticmethod
     async def search_bangumi(img: Image) -> MessageChain:

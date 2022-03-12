@@ -1,4 +1,5 @@
 import aiohttp
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch
 from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
@@ -25,14 +26,30 @@ channel.description("一个获取毒鸡汤的插件，在群中发送 `[鸡汤|�
 core = AppCore.get_core_instance()
 config = core.get_config()
 
+twilight = Twilight(
+    [
+        UnionMatch("来碗鸡汤", "鸡汤", "毒鸡汤")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def poisonous_chicken_soup(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await PoisonousChickenSoup.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def poisonous_chicken_soup(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await PoisonousChickenSoup.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

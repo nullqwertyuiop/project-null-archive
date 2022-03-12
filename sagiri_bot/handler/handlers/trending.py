@@ -1,6 +1,7 @@
 import random
 import aiohttp
 from bs4 import BeautifulSoup
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch
 from graia.ariadne.model import Friend
 
 from graia.saya import Saya, Channel
@@ -36,14 +37,30 @@ core = AppCore.get_core_instance()
 config = core.get_config()
 proxy = config.proxy if config.proxy != "proxy" else ''
 
+twilight = Twilight(
+    [
+        UnionMatch("微博热搜", "知乎热搜", "github热搜")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def trending(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await Trending.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def trending(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await Trending.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

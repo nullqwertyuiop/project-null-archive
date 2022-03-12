@@ -1,5 +1,6 @@
 import re
 
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
@@ -22,14 +23,30 @@ channel.name("MarketingContentGenerator")
 channel.author("SAGIRI-kawaii")
 channel.description("一个营销号内容生成器插件，在群中发送 `营销号#事件主体#事件内容#事件另一种说法` 即可")
 
+twilight = Twilight(
+    [
+        RegexMatch("营销号#.*#.*#.*")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def marketing_content_generator(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await MarketingContentGenerator.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def marketing_content_generator(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await MarketingContentGenerator.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

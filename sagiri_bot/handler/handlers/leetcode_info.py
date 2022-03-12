@@ -3,6 +3,7 @@ import json
 import aiohttp
 from html import unescape
 
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
 from graia.ariadne.message.chain import MessageChain
@@ -28,8 +29,19 @@ channel.description(
     "在群中发送 `leetcode每日一题` 可查询每日一题"
 )
 
+twilight = Twilight(
+    [
+        RegexMatch(r"(leetcode \S+)|(leetcode|力扣)每日一题")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def leetcode_info(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await LeetcodeInfo.handle(app, message, group, member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

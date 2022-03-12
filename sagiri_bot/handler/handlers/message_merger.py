@@ -1,3 +1,4 @@
+from graia.ariadne.message.parser.twilight import WildcardMatch, Twilight, FullMatch, SpacePolicy
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
@@ -21,14 +22,31 @@ channel.name("MessageMerger")
 channel.author("SAGIRI-kawaii")
 channel.description("将收到的消息合并为图片，在群中发送 `/merge 文字/图片`")
 
+twilight = Twilight(
+    [
+        FullMatch("/merge").space(SpacePolicy.FORCE),
+        WildcardMatch()
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def message_merger(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await MessageMerger.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def message_merger(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await MessageMerger.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

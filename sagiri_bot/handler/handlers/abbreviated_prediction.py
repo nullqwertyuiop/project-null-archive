@@ -1,20 +1,19 @@
 import aiohttp
-
-from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.element import Plain
-from graia.ariadne.message.chain import MessageChain
-from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
-from graia.ariadne.message.parser.twilight import Twilight, Sparkle
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 from graia.ariadne.message.parser.twilight import RegexMatch, FullMatch
+from graia.ariadne.message.parser.twilight import Twilight
+from graia.saya import Saya, Channel
+from graia.saya.builtins.broadcast.schema import ListenerSchema
 
+from sagiri_bot.decorators import frequency_limit_require_weight_free, switch, blacklist
 from sagiri_bot.handler.handler import AbstractHandler
-from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.message_sender.message_item import MessageItem
 from sagiri_bot.message_sender.message_sender import MessageSender
+from sagiri_bot.message_sender.strategy import QuoteSource
 from sagiri_bot.utils import update_user_call_count_plus, UserCalledCount
-from sagiri_bot.decorators import frequency_limit_require_weight_free, switch, blacklist
 
 saya = Saya.current()
 channel = Channel.current()
@@ -29,15 +28,16 @@ channel.description("一个获取英文缩写意思的插件，在群中发送 `
         listening_events=[GroupMessage],
         inline_dispatchers=[
             Twilight(
-                Sparkle(
-                    [FullMatch("缩"), FullMatch(" ", optional=True)],
-                    {"content": RegexMatch(r"[A-Za-z0-9]+")}
-                )
+                [
+                    FullMatch("缩"),
+                    FullMatch(" ", optional=True),
+                    "content" @ RegexMatch(r"[A-Za-z0-9]+")],
             )
         ]
     )
 )
-async def abbreviated_prediction(app: Ariadne, message: MessageChain, group: Group, member: Member, content: RegexMatch):
+async def abbreviated_prediction(app: Ariadne, message: MessageChain, group: Group, member: Member,
+                                 content: RegexMatch):
     if result := await AbbreviatedPrediction.handle(app, message, group, member, content):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
 
@@ -86,6 +86,6 @@ class AbbreviatedPrediction(AbstractHandler):
                     result += f"\n{i['name']} => 没找到结果！"
 
         return MessageItem(
-            message=MessageChain.create([Plain(text=result if has_result else "没有找到结果哦~")]),
+            message=MessageChain.create([Plain(text=result if has_result else "没有找到结果。")]),
             strategy=QuoteSource()
         )

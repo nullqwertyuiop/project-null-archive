@@ -1,3 +1,4 @@
+from graia.ariadne.message.parser.twilight import Twilight, ElementMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
@@ -21,8 +22,19 @@ channel.name("FlashImageCatcher")
 channel.author("SAGIRI-kawaii")
 channel.description("闪照转换插件，发送闪照自动转换")
 
+twilight = Twilight(
+    [
+        ElementMatch(FlashImage)
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def flash_image_catcher(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await FlashImageCatcherHandler.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

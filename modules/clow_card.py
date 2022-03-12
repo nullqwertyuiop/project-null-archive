@@ -9,6 +9,7 @@ from graia.ariadne.app import Ariadne, Friend
 from graia.ariadne.event.message import Group, Member, GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy
 from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
@@ -25,6 +26,12 @@ channel = Channel.current()
 channel.name("ClowCard")
 channel.author("nullqwertyuiop")
 channel.description("库洛牌、小樱牌、透明牌")
+
+twilight = Twilight(
+    [
+        UnionMatch("库洛牌", "庫洛牌", "小樱牌", "小櫻牌", "透明牌")
+    ]
+)
 
 
 @channel.use(ListenerSchema(listening_events=[FriendMessage]))

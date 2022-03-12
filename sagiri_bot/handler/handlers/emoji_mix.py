@@ -2,6 +2,7 @@ import re
 import aiohttp
 import traceback
 
+from graia.ariadne.message.parser.twilight import Twilight, RegexMatch
 from graia.ariadne.model import Friend
 from loguru import logger
 from typing import Union, Tuple, List, Optional
@@ -32,16 +33,34 @@ channel.description("一个生成emoji融合图的插件，发送 '{emoji1}+{emo
 
 EmojiData = Tuple[List[int], str, str]
 API = 'https://www.gstatic.com/android/keyboard/emojikitchen/'
-proxy = AppCore.get_core_instance().get_config().proxy
+core = AppCore.get_core_instance()
+config = core.get_config()
+proxy = config.proxy if config.proxy != "proxy" else ''
+
+twilight = Twilight(
+    [
+        RegexMatch(r".\+.")
+    ]
+)
 
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def emoji_mix(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await EmojiMix.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def emoji_mix(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await EmojiMix.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)

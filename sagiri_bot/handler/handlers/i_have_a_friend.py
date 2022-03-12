@@ -6,7 +6,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image, At
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, Member, GroupMessage
-from graia.ariadne.message.parser.twilight import Twilight, Sparkle
+from graia.ariadne.message.parser.twilight import Twilight, Sparkle, MatchResult
 from graia.ariadne.message.parser.twilight import RegexMatch, FullMatch, ElementMatch
 
 from sagiri_bot.core.app_core import AppCore
@@ -38,20 +38,16 @@ config = core.get_config()
         listening_events=[GroupMessage],
         inline_dispatchers=[
             Twilight(
-                Sparkle(
-                    [
-                        FullMatch("我"),
-                        RegexMatch(r"有一?个", optional=True),
-                        FullMatch("朋友"),
-                        RegexMatch(r"(想问问|说|让我问问|想问|让我问|想知道|让我帮他问问|让我帮他问|让我帮忙问|让我帮忙问问|问)"),
-                        FullMatch(" ", optional=True)
-                    ],
-                    {
-                        "dark": FullMatch("-dark", optional=True),
-                        "target": ElementMatch(At, optional=True),
-                        "content": RegexMatch(".+", optional=True)
-                    }
-                )
+                [
+                    FullMatch("我"),
+                    RegexMatch(r"有一?个", optional=True),
+                    FullMatch("朋友"),
+                    RegexMatch(r"(想问问|说|让我问问|想问|让我问|想知道|让我帮他问问|让我帮他问|让我帮忙问|让我帮忙问问|问)"),
+                    FullMatch(" ", optional=True),
+                    "dark" @ FullMatch("-dark", optional=True),
+                    "target" @ ElementMatch(At, optional=True),
+                    "content" @ RegexMatch(".+", optional=True)
+                ]
             )
         ]
     )
@@ -61,9 +57,9 @@ async def i_have_a_friend(
         message: MessageChain,
         group: Group,
         member: Member,
-        content: RegexMatch,
-        target: ElementMatch,
-        dark: FullMatch
+        content: MatchResult,
+        target: MatchResult,
+        dark: MatchResult
 ):
     if result := await IHaveAFriend.handle(app, message, group, member, content, target, dark):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
@@ -83,9 +79,9 @@ class IHaveAFriend(AbstractHandler):
             message: MessageChain,
             group: Group,
             member: Member,
-            content: RegexMatch,
-            target: ElementMatch,
-            dark: FullMatch
+            content: MatchResult,
+            target: MatchResult,
+            dark: MatchResult
     ):
         if content.matched and content.result.asDisplay().strip():
             content = content.result.asDisplay()

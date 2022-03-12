@@ -3,6 +3,7 @@ import os
 import json
 import random
 
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch
 from graia.ariadne.model import Friend
 from graia.saya import Saya, Channel
 from graia.ariadne.app import Ariadne
@@ -27,14 +28,30 @@ channel.name("Tarot")
 channel.author("SAGIRI-kawaii")
 channel.description("可以抽塔罗牌的插件，在群中发送 `塔罗牌` 即可")
 
+twilight = Twilight(
+    [
+        FullMatch("塔罗牌")
+    ]
+)
 
-@channel.use(ListenerSchema(listening_events=[FriendMessage]))
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[FriendMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def tarot(app: Ariadne, message: MessageChain, friend: Friend):
     if result := await Tarot.handle(app, message, friend=friend):
         await MessageSender(result.strategy).send(app, result.message, message, friend, friend)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage]))
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[twilight]
+    )
+)
 async def tarot(app: Ariadne, message: MessageChain, group: Group, member: Member):
     if result := await Tarot.handle(app, message, group=group, member=member):
         await MessageSender(result.strategy).send(app, result.message, message, group, member)
